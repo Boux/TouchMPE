@@ -7,8 +7,12 @@ export default class TouchHandler {
     this.canvas = canvas
     this.engine = engine
     this.grid = gridRenderer
-    // pointerId → touch state
     this.touches = new Map()
+
+    // Touch settings
+    this.pressureMode = 'auto' // 'auto', 'force', 'area', 'fixed'
+    this.slidePitchQuantize = false
+    this.pitchBendRange = 48
 
     this._onPointerDown = this._onPointerDown.bind(this)
     this._onPointerMove = this._onPointerMove.bind(this)
@@ -28,6 +32,12 @@ export default class TouchHandler {
     this.canvas.removeEventListener('pointercancel', this._onPointerUp)
   }
 
+  applySettings(settings) {
+    this.pressureMode = settings.pressureMode || 'auto'
+    this.slidePitchQuantize = settings.slidePitchQuantize || false
+    this.pitchBendRange = settings.pitchBendRange || 48
+  }
+
   _getCanvasPos(e) {
     const rect = this.canvas.getBoundingClientRect()
     return {
@@ -37,17 +47,37 @@ export default class TouchHandler {
   }
 
   _getPressure(e) {
-    // Pointer Events pressure: 0.0–1.0, 0.5 when active without pressure support
-    if (e.pressure !== undefined && e.pressure !== 0.5) {
-      return e.pressure
+    switch (this.pressureMode) {
+      case 'force':
+        return e.pressure || 0
+      case 'area':
+        return this._areaToNorm(e)
+      case 'fixed':
+        return 0.7
+      case 'auto':
+      default:
+        // Use force if available, fall back to area
+        if (e.pressure !== undefined && e.pressure !== 0.5 && e.pressure !== 0) {
+          return e.pressure
+        }
+        if (e.width && e.height) {
+          return this._areaToNorm(e)
+        }
+        return 0.5
     }
-    // Fallback: use contact area as pressure proxy
-    if (e.width && e.height) {
-      const area = e.width * e.height
-      // Normalize: typical finger ~40-400 sq px
-      return Math.min(1, Math.max(0, (area - 40) / 360))
-    }
-    return 0.5
+  }
+
+  _areaToNorm(e) {
+    if (!e.width || !e.height) return 0.5
+    const area = e.width * e.height
+    return Math.min(1, Math.max(0, (area - 40) / 360))
+  }
+
+  _quantizeBend(bendNorm) {
+    if (!this.slidePitchQuantize) return bendNorm
+    // Snap to nearest semitone boundary
+    const semitones = Math.round(bendNorm * this.pitchBendRange)
+    return semitones / this.pitchBendRange
   }
 
   _onPointerDown(e) {
@@ -57,13 +87,15 @@ export default class TouchHandler {
     if (!hit) return
 
     const pressure = this._getPressure(e)
-    const timbreNorm = this._calcTimbre(pos.y, hit)
+    const timbreNorm = this._calcTimbre(pos.y, hit.centerY, hit.height)
 
     const channel = this.engine.noteOn(e.pointerId, hit.note, pressure, timbreNorm)
 
     this.touches.set(e.pointerId, {
       channel,
       note: hit.note,
+      row: hit.row,
+      col: hit.col,
       padCenterX: hit.centerX,
       padCenterY: hit.centerY,
       padWidth: hit.width,
@@ -84,24 +116,21 @@ export default class TouchHandler {
     touch.currentX = pos.x
     touch.currentY = pos.y
 
-    // Pitch bend: X displacement from pad center, normalized to -1..+1
+    // Pitch bend
     const xOffset = pos.x - touch.padCenterX
-    const bendNorm = xOffset / (touch.padWidth / 2)
+    let bendNorm = Math.max(-1, Math.min(1, xOffset / (touch.padWidth / 2)))
+    bendNorm = this._quantizeBend(bendNorm)
     this.engine.updatePitchBend(e.pointerId, bendNorm)
 
-    // Timbre: Y position within pad, normalized to 0..1 (top=1, bottom=0)
-    const timbreNorm = this._calcTimbre(pos.y, touch)
+    // Timbre
+    const timbreNorm = this._calcTimbre(pos.y, touch.padCenterY, touch.padHeight)
     this.engine.updateTimbre(e.pointerId, timbreNorm)
 
     // Pressure
     const pressure = this._getPressure(e)
     this.engine.updatePressure(e.pointerId, pressure)
 
-    // Update visual state
-    const hit = this.grid.hitTest(touch.padCenterX, touch.padCenterY)
-    if (hit) {
-      this.grid.setTouchActive(hit.row, hit.col, true, bendNorm, timbreNorm, pressure)
-    }
+    this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, timbreNorm, pressure)
   }
 
   _onPointerUp(e) {
@@ -112,15 +141,11 @@ export default class TouchHandler {
     this.engine.noteOff(e.pointerId)
     this.touches.delete(e.pointerId)
 
-    // Clear visual state
-    const hit = this.grid.hitTest(touch.padCenterX, touch.padCenterY)
-    if (hit) {
-      this.grid.setTouchActive(hit.row, hit.col, false, 0, 0.5, 0)
-    }
+    this.grid.setTouchActive(touch.row, touch.col, false, 0, 0.5, 0)
   }
 
-  _calcTimbre(y, padInfo) {
-    const yOffset = padInfo.padCenterY - y
-    return Math.max(0, Math.min(1, 0.5 + yOffset / padInfo.padHeight))
+  _calcTimbre(y, padCenterY, padHeight) {
+    const yOffset = padCenterY - y
+    return Math.max(0, Math.min(1, 0.5 + yOffset / padHeight))
   }
 }

@@ -54,6 +54,12 @@ export default {
         scaleRoot: settings.scaleRoot
       })
       this.renderer.setGrid(grid)
+      if (this.engine) {
+        this.engine.applySettings(settings)
+      }
+      if (this.touchHandler) {
+        this.touchHandler.applySettings(settings)
+      }
     },
 
     _startRenderLoop() {

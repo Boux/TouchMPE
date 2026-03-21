@@ -34,9 +34,14 @@
         </label>
 
         <label>
-          Root Note (MIDI)
-          <input type="number" :value="settings.rootNote" min="0" max="127"
-            @change="update('rootNote', +$event.target.value)" />
+          Root Note
+          <div class="compound-input">
+            <select :value="rootPitchClass" @change="updateRootNote(+$event.target.value, rootOctave)">
+              <option v-for="(name, i) in noteNames" :key="i" :value="i">{{ name }}</option>
+            </select>
+            <input type="number" :value="rootOctave" min="-1" max="8"
+              @change="updateRootNote(rootPitchClass, +$event.target.value)" />
+          </div>
         </label>
 
         <label>
@@ -46,7 +51,7 @@
         </label>
 
         <label>
-          Column Offset (semitones)
+          Col Offset (semitones)
           <input type="number" :value="settings.colOffset" min="1" max="12"
             @change="update('colOffset', +$event.target.value)" />
         </label>
@@ -64,15 +69,59 @@
             <option value="mixolydian">Mixolydian</option>
           </select>
         </label>
+
+        <label>
+          Scale Root
+          <select :value="settings.scaleRoot"
+            @change="update('scaleRoot', +$event.target.value)">
+            <option v-for="(name, i) in noteNames" :key="i" :value="i">{{ name }}</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <h3>Touch</h3>
+
+        <label>
+          Note-On Pitch
+          <select :value="settings.noteOnQuantize ? 'quantize' : 'continuous'"
+            @change="update('noteOnQuantize', $event.target.value === 'quantize')">
+            <option value="quantize">Quantize</option>
+            <option value="continuous">Continuous</option>
+          </select>
+        </label>
+
+        <label>
+          Slide-To Pitch
+          <select :value="settings.slidePitchQuantize ? 'quantize' : 'continuous'"
+            @change="update('slidePitchQuantize', $event.target.value === 'quantize')">
+            <option value="continuous">Continuous</option>
+            <option value="quantize">Quantize</option>
+          </select>
+        </label>
+
+        <label>
+          Pressure
+          <select :value="settings.pressureMode"
+            @change="update('pressureMode', $event.target.value)">
+            <option value="auto">Auto</option>
+            <option value="force">Force</option>
+            <option value="area">Contact Area</option>
+            <option value="fixed">Fixed</option>
+          </select>
+        </label>
       </div>
 
       <div class="settings-section">
         <h3>MPE</h3>
 
         <label>
-          Pitch Bend Range (semitones)
-          <input type="number" :value="settings.pitchBendRange" min="1" max="96"
-            @change="update('pitchBendRange', +$event.target.value)" />
+          Pitch Bend Range
+          <div class="compound-input">
+            <input type="number" :value="settings.pitchBendRange" min="1" max="96"
+              @change="update('pitchBendRange', +$event.target.value)" />
+            <span class="unit">st</span>
+          </div>
         </label>
 
         <label>
@@ -88,6 +137,8 @@
 <script>
 import { PRESETS } from '../layout/KeyboardLayout.js'
 
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
 export default {
   name: 'SettingsPanel',
 
@@ -97,9 +148,31 @@ export default {
 
   emits: ['update', 'close'],
 
+  data() {
+    return {
+      noteNames: NOTE_NAMES
+    }
+  },
+
+  computed: {
+    rootPitchClass() {
+      return this.settings.rootNote % 12
+    },
+
+    rootOctave() {
+      return Math.floor(this.settings.rootNote / 12) - 1
+    }
+  },
+
   methods: {
     update(key, value) {
       this.$emit('update', { ...this.settings, [key]: value, preset: 'custom' })
+    },
+
+    updateRootNote(pitchClass, octave) {
+      const midi = (octave + 1) * 12 + pitchClass
+      const clamped = Math.max(0, Math.min(127, midi))
+      this.$emit('update', { ...this.settings, rootNote: clamped, preset: 'custom' })
     },
 
     applyPreset(presetName) {
@@ -183,5 +256,25 @@ export default {
     border-radius: 3px
     padding: 3px 6px
     font-size: 13px
+
+  select
     width: 100px
+
+  input[type="number"]
+    width: 60px
+
+.compound-input
+  display: flex
+  align-items: center
+  gap: 4px
+
+  select
+    width: 60px
+
+  input[type="number"]
+    width: 48px
+
+  .unit
+    font-size: 11px
+    color: #666
 </style>

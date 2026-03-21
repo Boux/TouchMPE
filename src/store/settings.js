@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'touchmpe-settings'
 
 const DEFAULTS = {
+  // Layout
   preset: 'chromatic',
   cols: 12,
   rows: 5,
@@ -9,8 +10,15 @@ const DEFAULTS = {
   colOffset: 1,
   scale: 'chromatic',
   scaleRoot: 0,
+
+  // MPE
   pitchBendRange: 48,
-  memberChannels: 15
+  memberChannels: 15,
+
+  // Touch
+  noteOnQuantize: true,
+  slidePitchQuantize: false,
+  pressureMode: 'auto' // 'auto', 'force', 'area', 'fixed'
 }
 
 export function loadSettings() {

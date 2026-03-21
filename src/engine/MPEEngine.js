@@ -14,6 +14,25 @@ export default class MPEEngine {
   }
 
   /**
+   * Apply settings from the settings store.
+   */
+  applySettings(settings) {
+    const memberCountChanged = settings.memberChannels !== this.allocator.memberCount
+    const pbRangeChanged = settings.pitchBendRange !== this.pitchBendRange
+
+    if (memberCountChanged) {
+      this.panic()
+      this.allocator.setMemberCount(settings.memberChannels)
+    }
+
+    this.pitchBendRange = settings.pitchBendRange
+
+    if ((memberCountChanged || pbRangeChanged) && this.midiOutput.output) {
+      this.sendConfig()
+    }
+  }
+
+  /**
    * Send MPE configuration to the output (zone config + pitch bend sensitivity).
    */
   sendConfig() {

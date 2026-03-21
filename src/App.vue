@@ -1,11 +1,16 @@
 <template>
   <div class="app">
     <Toolbar
+      :settings="settings"
       :midi-output-name="midiOutputName"
       :midi-outputs="midiOutputs"
       :settings-open="settingsOpen"
       @select-output="onSelectOutput"
       @toggle-settings="settingsOpen = !settingsOpen"
+      @octave-up="shiftOctave(1)"
+      @octave-down="shiftOctave(-1)"
+      @preset-change="onPresetChange"
+      @panic="onPanic"
     />
     <GridCanvas
       ref="gridCanvas"
@@ -27,6 +32,7 @@ import GridCanvas from './components/GridCanvas.vue'
 import Toolbar from './components/Toolbar.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import MIDIOutput from './midi/MIDIOutput.js'
+import { PRESETS } from './layout/KeyboardLayout.js'
 import { loadSettings, saveSettings } from './store/settings.js'
 
 export default {
@@ -51,7 +57,6 @@ export default {
       this.midiOutput.onStateChange = (outputs) => {
         this.midiOutputs = outputs
       }
-      // Auto-select first output if available
       if (this.midiOutputs.length > 0) {
         this.onSelectOutput(this.midiOutputs[0].id)
       }
@@ -59,12 +64,10 @@ export default {
       console.error('MIDI init failed:', err.message)
     }
 
-    // Send All Notes Off on page unload
     window.addEventListener('beforeunload', () => {
       if (this.engine) this.engine.panic()
     })
 
-    // Panic on visibility change (tab hidden, screen off)
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.engine) this.engine.panic()
     })
@@ -81,6 +84,7 @@ export default {
 
     onEngineReady(engine) {
       this.engine = engine
+      this.engine.applySettings(this.settings)
       if (this.midiOutput.output) {
         this.engine.sendConfig()
       }
@@ -92,6 +96,29 @@ export default {
       if (this.$refs.gridCanvas) {
         this.$refs.gridCanvas.applySettings(this.settings)
       }
+    },
+
+    onPresetChange(presetName) {
+      const preset = PRESETS[presetName]
+      if (preset) {
+        this.onSettingsUpdate({
+          ...this.settings,
+          preset: presetName,
+          rowOffset: preset.rowOffset,
+          colOffset: preset.colOffset
+        })
+      }
+    },
+
+    shiftOctave(direction) {
+      const newRoot = this.settings.rootNote + direction * 12
+      if (newRoot >= 0 && newRoot <= 127) {
+        this.onSettingsUpdate({ ...this.settings, rootNote: newRoot })
+      }
+    },
+
+    onPanic() {
+      if (this.engine) this.engine.panic()
     }
   }
 }
