@@ -1,0 +1,9 @@
+{
+  "name": "TouchMPE Controller",
+  "short_name": "TouchMPE",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1a1a1a",
+  "theme_color": "#ff8800"
+}
