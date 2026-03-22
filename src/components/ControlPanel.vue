@@ -6,44 +6,65 @@
   >
     <div class="panel-resize-handle" @pointerdown.prevent="startResize"></div>
 
+    <div class="panel-toolbar">
+      <div class="panel-toolbar-slider">
+        <input type="range" :value="config.cellSize" min="30" max="120" step="5"
+          @input="updateCellSize(+$event.target.value)" title="Zoom" />
+      </div>
+      <div class="panel-toolbar-docks">
+        <button :class="{ active: config.dockSide === 'left' }" @click="setDockSide('left')" title="Dock left">
+          <svg viewBox="0 0 20 20"><rect x="1" y="2" width="6" height="16" rx="1" fill="currentColor"/><rect x="9" y="2" width="10" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button :class="{ active: config.dockSide === 'right' }" @click="setDockSide('right')" title="Dock right">
+          <svg viewBox="0 0 20 20"><rect x="13" y="2" width="6" height="16" rx="1" fill="currentColor"/><rect x="1" y="2" width="10" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button :class="{ active: config.dockSide === 'top' }" @click="setDockSide('top')" title="Dock top">
+          <svg viewBox="0 0 20 20"><rect x="2" y="1" width="16" height="6" rx="1" fill="currentColor"/><rect x="2" y="9" width="16" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button :class="{ active: config.dockSide === 'bottom' }" @click="setDockSide('bottom')" title="Dock bottom">
+          <svg viewBox="0 0 20 20"><rect x="2" y="13" width="16" height="6" rx="1" fill="currentColor"/><rect x="2" y="1" width="16" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+      </div>
+    </div>
+
     <div
       ref="grid"
       class="panel-grid"
       :class="{ selecting: selectedCtrl }"
-      :style="gridStyle"
-      @pointerdown.prevent="onGridDown"
-      @pointermove.prevent="onGridMove"
-      @pointerup.prevent="onGridUp"
-      @pointercancel.prevent="onGridUp"
+      @pointerdown="onGridDown"
+      @pointermove="onGridMove"
+      @pointerup="onGridUp"
+      @pointercancel="onGridUp"
       @contextmenu.prevent="onGridContext"
     >
-      <!-- Empty cells -->
-      <div
-        v-for="cell in emptyCells"
-        :key="'e-' + cell.col + '-' + cell.row"
-        :ref="'cell-' + cell.col + '-' + cell.row"
-        class="grid-cell"
-        :class="{ highlight: isCellInDrag(cell.col, cell.row) }"
-        :style="cellStyle(cell)"
-      ></div>
+      <div class="grid-inner" :style="gridInnerStyle">
+        <!-- Empty cells -->
+        <div
+          v-for="cell in emptyCells"
+          :key="'e-' + cell.col + '-' + cell.row"
+          :ref="'cell-' + cell.col + '-' + cell.row"
+          class="grid-cell"
+          :class="{ highlight: isCellInDrag(cell.col, cell.row) }"
+          :style="cellAbsStyle(cell, 1, 1)"
+        ></div>
 
-      <!-- Controls -->
-      <div
-        v-for="ctrl in config.controls"
-        :key="ctrl.id"
-        :ref="'ctrl-' + ctrl.id"
-        class="grid-control"
-        :class="[
-          'type-' + ctrl.type,
-          { 'is-active': activePointers[ctrl.id], 'is-selected': selectedCtrl === ctrl.id }
-        ]"
-        :style="controlPosStyle(ctrl)"
-        @pointerdown.stop.prevent="onControlDown($event, ctrl)"
-        @pointermove.prevent="onControlMove($event, ctrl)"
-        @pointerup.prevent="onControlUp($event, ctrl)"
-        @pointercancel.prevent="onControlUp($event, ctrl)"
-        @contextmenu.stop.prevent="openConfig(ctrl)"
-      >
+        <!-- Controls -->
+        <div
+          v-for="ctrl in config.controls"
+          :key="ctrl.id"
+          :ref="'ctrl-' + ctrl.id"
+          class="grid-control"
+          :class="[
+            'type-' + ctrl.type,
+            { 'is-active': activePointers[ctrl.id], 'is-selected': selectedCtrl === ctrl.id }
+          ]"
+          :style="cellAbsStyle(ctrl, ctrl.colSpan, ctrl.rowSpan)"
+          @pointerdown.stop.prevent="onControlDown($event, ctrl)"
+          @pointermove.prevent="onControlMove($event, ctrl)"
+          @pointerup.prevent="onControlUp($event, ctrl)"
+          @pointercancel.prevent="onControlUp($event, ctrl)"
+          @contextmenu.stop.prevent="openConfig(ctrl)"
+        >
         <div class="control-label">{{ ctrl.label || ccLabel(ctrl.cc) }}</div>
         <div class="control-value">{{ Math.round(controlValues[ctrl.id] ?? 0) }}</div>
 
@@ -68,19 +89,12 @@
         <div v-if="ctrl.type === 'button' || ctrl.type === 'toggle'" class="btn-indicator"
           :class="{ on: (controlValues[ctrl.id] ?? 0) > 0 }"></div>
       </div>
+      </div>
     </div>
 
     <!-- Add control popup -->
     <div v-if="popup" ref="addPopup" class="floating-popup"
       @pointerdown="startPopupDrag($event, 'addPopup')">
-      <label>
-        Grid Size
-        <div class="slider-group">
-          <input type="range" :value="config.gridCols" min="3" max="12" step="1"
-            @input="updateGridCols(+$event.target.value)" />
-          <span class="slider-value">{{ config.gridCols }}</span>
-        </div>
-      </label>
       <div class="add-controls-label">Add Control</div>
       <div class="add-controls-row">
         <button @click="placeControl('knob')">Knob</button>
@@ -138,15 +152,11 @@ export default {
       xyValues: {},
       activePointers: {},
       resizing: false,
-      resizeStart: null,
-      cellSize: 50
+      resizeStart: null
     }
   },
 
   mounted() {
-    this.computeCellSize()
-    this._resizeObs = new ResizeObserver(() => this.computeCellSize())
-    this._resizeObs.observe(this.$refs.grid)
     this._onDocClick = (e) => {
       if (this.popup && this.$refs.addPopup && !this.$refs.addPopup.contains(e.target)) {
         this.popup = null
@@ -164,7 +174,6 @@ export default {
   },
 
   beforeUnmount() {
-    if (this._resizeObs) this._resizeObs.disconnect()
     document.removeEventListener('pointerdown', this._onDocClick, true)
   },
 
@@ -179,20 +188,31 @@ export default {
         : { height: this.config.panelSize + 'px' }
     },
 
-    gridStyle() {
-      const cols = this.config.gridCols || 6
+    sz() { return this.config.cellSize || 60 },
+    gap() { return 2 },
+
+    gridBounds() {
+      let minC = 0, minR = 0, maxC = 0, maxR = 0
+      for (const ctrl of this.config.controls) {
+        minC = Math.min(minC, ctrl.col)
+        minR = Math.min(minR, ctrl.row)
+        maxC = Math.max(maxC, ctrl.col + ctrl.colSpan)
+        maxR = Math.max(maxR, ctrl.row + ctrl.rowSpan)
+      }
+      const pad = 5
       return {
-        gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gridAutoRows: this.cellSize + 'px'
+        minCol: minC - pad, minRow: minR - pad,
+        maxCol: maxC + pad, maxRow: maxR + pad
       }
     },
 
-    gridRows() {
-      let maxRow = this.config.gridCols
-      for (const ctrl of this.config.controls) {
-        maxRow = Math.max(maxRow, ctrl.row + ctrl.rowSpan)
+    gridInnerStyle() {
+      const b = this.gridBounds
+      const step = this.sz + this.gap
+      return {
+        width: (b.maxCol - b.minCol) * step + 'px',
+        height: (b.maxRow - b.minRow) * step + 'px'
       }
-      return Math.max(maxRow, 8)
     },
 
     occupiedSet() {
@@ -208,10 +228,10 @@ export default {
     },
 
     emptyCells() {
-      const cols = this.config.gridCols || 6
+      const b = this.gridBounds
       const cells = []
-      for (let row = 0; row < this.gridRows; row++) {
-        for (let col = 0; col < cols; col++) {
+      for (let row = b.minRow; row < b.maxRow; row++) {
+        for (let col = b.minCol; col < b.maxCol; col++) {
           if (!this.occupiedSet.has(col + ',' + row)) {
             cells.push({ col, row })
           }
@@ -227,44 +247,33 @@ export default {
   },
 
   methods: {
-    computeCellSize() {
-      const grid = this.$refs.grid
-      if (!grid) return
-      const rect = grid.getBoundingClientRect()
-      const cols = this.config.gridCols || 6
-      const gap = 2
-      const padding = 6
-      this.cellSize = Math.floor((rect.width - padding * 2 - (cols - 1) * gap) / cols)
+    updateCellSize(val) {
+      this.config.cellSize = val
+      this.saveConfig()
     },
 
     cellFromEvent(e) {
       const grid = this.$refs.grid
       if (!grid) return null
-      const rect = grid.getBoundingClientRect()
-      const padding = 6
-      const gap = 2
-      const cols = this.config.gridCols || 6
-      const step = this.cellSize + gap
+      const b = this.gridBounds
+      const step = this.sz + this.gap
 
-      const x = e.clientX - rect.left - padding
-      const y = e.clientY - rect.top - padding + grid.scrollTop
-      const col = Math.floor(x / step)
-      const row = Math.floor(y / step)
-      if (col < 0 || col >= cols || row < 0) return null
+      const x = e.clientX - grid.getBoundingClientRect().left + grid.scrollLeft
+      const y = e.clientY - grid.getBoundingClientRect().top + grid.scrollTop
+      const col = Math.floor(x / step) + b.minCol
+      const row = Math.floor(y / step) + b.minRow
       return { col, row }
     },
 
-    cellStyle(cell) {
+    cellAbsStyle(item, colSpan, rowSpan) {
+      const b = this.gridBounds
+      const step = this.sz + this.gap
       return {
-        gridColumn: `${cell.col + 1}`,
-        gridRow: `${cell.row + 1}`
-      }
-    },
-
-    controlPosStyle(ctrl) {
-      return {
-        gridColumn: `${ctrl.col + 1} / span ${ctrl.colSpan}`,
-        gridRow: `${ctrl.row + 1} / span ${ctrl.rowSpan}`
+        position: 'absolute',
+        left: (item.col - b.minCol) * step + 'px',
+        top: (item.row - b.minRow) * step + 'px',
+        width: colSpan * step - this.gap + 'px',
+        height: rowSpan * step - this.gap + 'px'
       }
     },
 
@@ -354,21 +363,30 @@ export default {
       }
     },
 
+    setDockSide(side) {
+      this.config.dockSide = side
+      // grid reflows automatically via reactive computed
+      this.saveConfig()
+    },
+
     // --- Grid pointer events ---
     onGridDown(e) {
       const cell = this.cellFromEvent(e)
       if (!cell) return
 
       if (this.selectedCtrl) {
+        e.preventDefault()
         this._gridDownStart = { x: e.clientX, y: e.clientY, cell, dragging: false }
         this.$refs.grid.setPointerCapture(e.pointerId)
         return
       }
+      // No selected ctrl: let the event through for native scrolling
     },
 
     onGridMove(e) {
       const s = this._gridDownStart
       if (!s || !this.selectedCtrl) return
+      e.preventDefault()
 
       if (!s.dragging) {
         const dx = Math.abs(e.clientX - s.x)
@@ -508,11 +526,6 @@ export default {
       this.saveConfig()
     },
 
-    updateGridCols(val) {
-      this.config.gridCols = val
-      this.$nextTick(() => this.computeCellSize())
-      this.saveConfig()
-    },
 
     saveConfig() {
       this.$emit('update', this.config)
@@ -532,7 +545,7 @@ export default {
         else if (side === 'bottom') delta = this.resizeStart.y - e.clientY
         else delta = e.clientY - this.resizeStart.y
         this.config.panelSize = Math.max(100, Math.min(500, this.resizeStart.size + delta))
-        this.$nextTick(() => this.computeCellSize())
+        // grid reflows automatically via reactive computed
       }
       const onUp = () => {
         this.resizing = false
@@ -625,6 +638,7 @@ export default {
 .control-panel
   background: #1a1a1a
   display: flex
+  flex-direction: column
   flex-shrink: 0
   position: relative
   overflow: hidden
@@ -637,6 +651,64 @@ export default {
     border-bottom: 1px solid #333
   &.dock-bottom
     border-top: 1px solid #333
+
+.panel-toolbar
+  display: flex
+  align-items: center
+  gap: 6px
+  padding: 4px 6px
+  background: #222
+  border-bottom: 1px solid #333
+  flex-shrink: 0
+
+.panel-toolbar-slider
+  display: flex
+  align-items: center
+  gap: 4px
+  flex: 1
+  min-width: 0
+
+  input[type="range"]
+    flex: 1
+    min-width: 40px
+    accent-color: #ff8800
+    height: 24px
+
+  span
+    font-size: 12px
+    color: #888
+    min-width: 16px
+    text-align: center
+
+.panel-toolbar-docks
+  display: flex
+  gap: 2px
+
+  button
+    width: 28px
+    height: 28px
+    padding: 4px
+    background: #333
+    border: 1px solid #444
+    border-radius: 4px
+    color: #888
+    cursor: pointer
+    display: flex
+    align-items: center
+    justify-content: center
+
+    &:hover
+      background: #444
+      color: #ccc
+
+    &.active
+      background: #ff8800
+      color: #000
+      border-color: #ff8800
+
+    svg
+      width: 16px
+      height: 16px
 
 .panel-resize-handle
   position: absolute
@@ -673,17 +745,18 @@ export default {
 
 .panel-grid
   flex: 1
-  display: grid
-  gap: 2px
-  padding: 6px
-  align-content: start
-  overflow-y: auto
-  touch-action: none
+  overflow: auto
+  position: relative
 
   &.selecting
     cursor: crosshair
+    touch-action: none
+
+.grid-inner
+  position: relative
 
 .grid-cell
+  position: absolute
   background: #222
   border-radius: 3px
 

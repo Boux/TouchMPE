@@ -4,6 +4,7 @@ const DEFAULTS = {
   dockSide: 'right',
   panelSize: 200,
   visible: false,
+  cellSize: 60,
   gridCols: 6,
   controls: []
 }
