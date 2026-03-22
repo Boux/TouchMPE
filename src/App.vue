@@ -5,6 +5,7 @@
       :midi-output-name="midiOutputName"
       :midi-outputs="midiOutputs"
       :settings-open="settingsOpen"
+      :controls-open="controlConfig.visible"
       @select-output="onSelectOutput"
       @toggle-settings="settingsOpen = !settingsOpen"
       @octave-up="shiftOctave(1)"

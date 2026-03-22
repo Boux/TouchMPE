@@ -92,6 +92,7 @@ export default {
 .grid-canvas
   flex: 1
   width: 100%
+  min-width: 0
   min-height: 0
   display: block
 </style>

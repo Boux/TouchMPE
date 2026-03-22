@@ -21,6 +21,7 @@
       <div
         v-for="cell in emptyCells"
         :key="'e-' + cell.col + '-' + cell.row"
+        :ref="'cell-' + cell.col + '-' + cell.row"
         class="grid-cell"
         :class="{ highlight: isCellInDrag(cell.col, cell.row) }"
         :style="cellStyle(cell)"
@@ -30,6 +31,7 @@
       <div
         v-for="ctrl in config.controls"
         :key="ctrl.id"
+        :ref="'ctrl-' + ctrl.id"
         class="grid-control"
         :class="[
           'type-' + ctrl.type,
@@ -69,52 +71,49 @@
     </div>
 
     <!-- Add control popup -->
-    <div v-if="popup" class="config-popup" @click.self="popup = null">
-      <div class="config-panel">
-        <label>
-          Grid Size
-          <div class="slider-group">
-            <input type="range" :value="config.gridCols" min="3" max="12" step="1"
-              @input="updateGridCols(+$event.target.value)" />
-            <span class="slider-value">{{ config.gridCols }}</span>
-          </div>
-        </label>
-        <div class="add-controls-label">Add Control</div>
-        <div class="add-controls-row">
-          <button @click="placeControl('knob')">Knob</button>
-          <button @click="placeControl('fader')">Fader</button>
-          <button @click="placeControl('button')">Button</button>
-          <button @click="placeControl('toggle')">Toggle</button>
-          <button @click="placeControl('xypad')">XY</button>
+    <div v-if="popup" ref="addPopup" class="floating-popup">
+      <label>
+        Grid Size
+        <div class="slider-group">
+          <input type="range" :value="config.gridCols" min="3" max="12" step="1"
+            @input="updateGridCols(+$event.target.value)" />
+          <span class="slider-value">{{ config.gridCols }}</span>
         </div>
+      </label>
+      <div class="add-controls-label">Add Control</div>
+      <div class="add-controls-row">
+        <button @click="placeControl('knob')">Knob</button>
+        <button @click="placeControl('fader')">Fader</button>
+        <button @click="placeControl('button')">Button</button>
+        <button @click="placeControl('toggle')">Toggle</button>
+        <button @click="placeControl('xypad')">XY</button>
       </div>
     </div>
 
     <!-- Control config popup -->
-    <div v-if="configCtrl" class="config-popup" @click.self="configCtrl = null">
-      <div class="config-panel">
-        <label>
-          Label
-          <input type="text" v-model="configCtrl.label" @input="saveConfig" />
-        </label>
-        <label>
-          CC Number
-          <input type="number" v-model.number="configCtrl.cc" min="0" max="127" @input="saveConfig" />
-        </label>
-        <label v-if="configCtrl.type === 'xypad'">
-          CC Y-Axis
-          <input type="number" v-model.number="configCtrl.cc2" min="0" max="127" @input="saveConfig" />
-        </label>
-        <button class="delete-config-btn" @click="deleteControl(configCtrl.id); configCtrl = null">
-          Delete Control
-        </button>
-        <button @click="configCtrl = null">Close</button>
-      </div>
+    <div v-if="configCtrl" ref="configPopup" class="floating-popup">
+      <label>
+        Label
+        <input type="text" v-model="configCtrl.label" @input="saveConfig" />
+      </label>
+      <label>
+        CC Number
+        <input type="number" v-model.number="configCtrl.cc" min="0" max="127" @input="saveConfig" />
+      </label>
+      <label v-if="configCtrl.type === 'xypad'">
+        CC Y-Axis
+        <input type="number" v-model.number="configCtrl.cc2" min="0" max="127" @input="saveConfig" />
+      </label>
+      <button class="delete-config-btn" @click="deleteControl(configCtrl.id); configCtrl = null">
+        Delete Control
+      </button>
+      <button @click="configCtrl = null">Close</button>
     </div>
   </div>
 </template>
 
 <script>
+import { computePosition, autoPlacement, shift } from '@floating-ui/dom'
 import { generateId, saveControlConfig } from '../store/controlConfig.js'
 
 export default {
@@ -148,10 +147,20 @@ export default {
     this.computeCellSize()
     this._resizeObs = new ResizeObserver(() => this.computeCellSize())
     this._resizeObs.observe(this.$refs.grid)
+    this._onDocClick = (e) => {
+      if (this.popup && this.$refs.addPopup && !this.$refs.addPopup.contains(e.target)) {
+        this.popup = null
+      }
+      if (this.configCtrl && this.$refs.configPopup && !this.$refs.configPopup.contains(e.target)) {
+        this.configCtrl = null
+      }
+    }
+    document.addEventListener('pointerdown', this._onDocClick, true)
   },
 
   beforeUnmount() {
     if (this._resizeObs) this._resizeObs.disconnect()
+    document.removeEventListener('pointerdown', this._onDocClick, true)
   },
 
   computed: {
@@ -278,6 +287,19 @@ export default {
       return col >= c1 && col <= c2 && row >= r1 && row <= r2
     },
 
+    positionFloating(anchorEl, floatingRef) {
+      this.$nextTick(() => {
+        const floating = this.$refs[floatingRef]
+        if (!floating || !anchorEl) return
+        computePosition(anchorEl, floating, {
+          middleware: [autoPlacement(), shift({ padding: 8 })]
+        }).then(({ x, y }) => {
+          floating.style.left = x + 'px'
+          floating.style.top = y + 'px'
+        })
+      })
+    },
+
     // --- Context menu (right click / long touch) ---
     onGridContext(e) {
       const cell = this.cellFromEvent(e)
@@ -286,6 +308,9 @@ export default {
         this.popupCell = cell
         this.popup = true
         this.selectedCtrl = null
+        const refArr = this.$refs['cell-' + cell.col + '-' + cell.row]
+        const anchor = Array.isArray(refArr) ? refArr[0] : refArr
+        if (anchor) this.positionFloating(anchor, 'addPopup')
       }
     },
 
@@ -410,7 +435,13 @@ export default {
     },
 
     // --- Config ---
-    openConfig(ctrl) { this.configCtrl = ctrl },
+    openConfig(ctrl) {
+      this.configCtrl = ctrl
+      this.selectedCtrl = ctrl.id
+      const refArr = this.$refs['ctrl-' + ctrl.id]
+      const anchor = Array.isArray(refArr) ? refArr[0] : refArr
+      if (anchor) this.positionFloating(anchor, 'configPopup')
+    },
 
     deleteControl(id) {
       this.config.controls = this.config.controls.filter(c => c.id !== id)
@@ -457,8 +488,15 @@ export default {
     // --- Control interaction (play mode) ---
     onControlDown(e, ctrl) {
       if (this.selectedCtrl) {
-        // Tap on a different control while one is selected → deselect
-        if (this.selectedCtrl !== ctrl.id) {
+        if (this.selectedCtrl === ctrl.id) {
+          // Drag from the selected control itself to move/resize
+          const cell = this.cellFromEvent(e)
+          if (cell) {
+            this.dragStart = cell
+            this.dragEnd = cell
+            this.$refs.grid.setPointerCapture(e.pointerId)
+          }
+        } else {
           this.deselectCtrl()
         }
         return
@@ -693,16 +731,11 @@ export default {
     background: #ff8800
     box-shadow: 0 0 8px #ff8800
 
-.config-popup
+.floating-popup
   position: fixed
-  inset: 0
-  background: rgba(0, 0, 0, 0.5)
-  z-index: 200
-  display: flex
-  align-items: center
-  justify-content: center
-
-.config-panel
+  left: 0
+  top: 0
+  z-index: 201
   background: #222
   border: 1px solid #444
   border-radius: 8px
@@ -711,6 +744,7 @@ export default {
   flex-direction: column
   gap: 12px
   min-width: 240px
+  max-width: 300px
 
   label
     display: flex
