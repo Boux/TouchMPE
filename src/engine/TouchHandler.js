@@ -116,7 +116,7 @@ export default class TouchHandler {
     const dt = Math.min((now - touch.lastBendTime) / 1000, 0.1)
     touch.lastBendTime = now
     const bendDelta = Math.abs(rawBend - touch.lastRawBend)
-    touch.movementWeight = Math.min(1, touch.movementWeight + bendDelta * 15)
+    touch.movementWeight = Math.min(1, touch.movementWeight + bendDelta * 40)
     touch.movementWeight = Math.max(0, touch.movementWeight - this.gravityDecay * dt * 6)
     touch.lastRawBend = rawBend
 
@@ -135,7 +135,7 @@ export default class TouchHandler {
       // target is always the full distance to center
       const t = 1 - (dist / radius)
       const targetOffset = quantized - rawBend
-      const speed = this.gravityStrength * t * (1 - touch.movementWeight) * dt * 10
+      const speed = this.gravityStrength * t * (1 - touch.movementWeight) * dt * 40
       touch.gravityOffset += (targetOffset - touch.gravityOffset) * Math.min(speed, 1)
     }
 
