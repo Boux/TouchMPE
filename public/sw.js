@@ -1,6 +1,18 @@
-const CACHE_NAME = 'touchmpe-v1'
+const CACHE_NAME = 'touchmpe-v2'
+
+const APP_SHELL = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+]
 
 self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+  )
   self.skipWaiting()
 })
 
@@ -18,21 +30,36 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
-  // Network-first for navigation, cache-first for assets
+  const url = new URL(event.request.url)
+
+  // Network-first for navigation requests
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
-    )
-  } else {
-    event.respondWith(
-      caches.match(event.request).then((cached) => {
-        const fetched = fetch(event.request).then((response) => {
+      fetch(event.request)
+        .then((response) => {
           const clone = response.clone()
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
           return response
         })
-        return cached || fetched
-      })
+        .catch(() => caches.match('/index.html'))
     )
+    return
   }
+
+  // Cache-first with background revalidation for all other requests
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      const fetchPromise = fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+          }
+          return response
+        })
+        .catch(() => cached)
+
+      return cached || fetchPromise
+    })
+  )
 })

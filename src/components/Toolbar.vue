@@ -181,38 +181,40 @@ export default {
   background: #2a2a2a
   border: 1px solid #444
   border-top: none
-  padding: 12px
+  padding: 16px
   display: flex
   flex-direction: column
-  gap: 10px
-  max-width: 300px
+  gap: 14px
+  max-width: 320px
   margin-left: auto
 
 .menu-label
   display: flex
   justify-content: space-between
   align-items: center
-  font-size: 13px
+  font-size: 15px
   color: #aaa
 
   select
     background: #333
     color: #ccc
     border: 1px solid #444
-    border-radius: 3px
-    padding: 4px 8px
-    font-size: 13px
-    max-width: 160px
+    border-radius: 6px
+    padding: 8px 10px
+    font-size: 16px
+    min-height: 40px
+    max-width: 180px
 
 .menu-btn
   background: #333
   color: #ccc
   border: 1px solid #444
-  border-radius: 3px
-  padding: 6px 12px
-  font-size: 13px
+  border-radius: 6px
+  padding: 10px 14px
+  font-size: 16px
   cursor: pointer
   text-align: left
+  min-height: 40px
 
   &:hover
     background: #444

@@ -219,8 +219,11 @@ export default {
   background: none
   border: none
   color: #888
-  font-size: 16px
+  font-size: 20px
   cursor: pointer
+  padding: 8px
+  min-width: 40px
+  min-height: 40px
 
   &:hover
     color: #fff
@@ -241,50 +244,52 @@ export default {
     display: flex
     justify-content: space-between
     align-items: center
-    font-size: 13px
+    font-size: 15px
     color: #aaa
-    margin-bottom: 8px
+    margin-bottom: 12px
 
   select, input[type="number"]
     background: #333
     color: #ccc
     border: 1px solid #444
-    border-radius: 3px
-    padding: 3px 6px
-    font-size: 13px
+    border-radius: 6px
+    padding: 8px 10px
+    font-size: 16px
+    min-height: 40px
 
   select
-    width: 100px
+    width: 120px
 
   input[type="number"]
-    width: 60px
+    width: 72px
 
 .compound-input
   display: flex
   align-items: center
-  gap: 4px
+  gap: 6px
 
   select
-    width: 60px
+    width: 72px
 
   input[type="number"]
-    width: 48px
+    width: 60px
 
   .unit
-    font-size: 11px
+    font-size: 13px
     color: #666
 
 .slider-group
   display: flex
   align-items: center
-  gap: 6px
+  gap: 8px
 
   input[type="range"]
-    width: 90px
+    width: 100px
     accent-color: #ff8800
+    height: 32px
 
   .slider-value
-    font-size: 11px
+    font-size: 13px
     color: #888
-    min-width: 36px
+    min-width: 40px
 </style>
