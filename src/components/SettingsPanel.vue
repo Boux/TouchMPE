@@ -140,6 +140,15 @@
             <option value="fixed">Fixed</option>
           </select>
         </label>
+
+        <label>
+          Timbre Distance
+          <div class="compound-input">
+            <input type="number" :value="settings.timbreDistance" min="1" max="8"
+              @change="update('timbreDistance', +$event.target.value)" />
+            <span class="unit">rows</span>
+          </div>
+        </label>
       </div>
 
       <div v-if="settings.mpeMode !== false" class="settings-section">

@@ -24,7 +24,8 @@ const DEFAULTS = {
   gravityRadius: 0.5,
   gravityStrength: 0.4,
   gravityDecay: 0.4,
-  pressureMode: 'auto'
+  pressureMode: 'auto',
+  timbreDistance: 1
 }
 
 /**

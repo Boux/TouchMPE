@@ -25,6 +25,7 @@ export default class TouchHandler {
     this.gravityDecay = 0.5
     this.pitchBendRange = 48
     this.colOffset = 1
+    this.timbreDistance = 1
     this.deadZonePx = 5 // pixels of movement before bend starts
 
     this._onPointerDown = this._onPointerDown.bind(this)
@@ -53,6 +54,7 @@ export default class TouchHandler {
     this.gravityDecay = settings.gravityDecay ?? 0.5
     this.pitchBendRange = settings.pitchBendRange || 48
     this.colOffset = settings.colOffset || 1
+    this.timbreDistance = settings.timbreDistance || 1
   }
 
   tickGravity() {
@@ -236,6 +238,6 @@ export default class TouchHandler {
    */
   _calcTimbre(y, padCenterY, rowSpacing) {
     const yOffset = padCenterY - y
-    return Math.max(0, Math.min(1, 0.5 + yOffset / (2 * rowSpacing)))
+    return Math.max(0, Math.min(1, 0.5 + yOffset / (2 * this.timbreDistance * rowSpacing)))
   }
 }
