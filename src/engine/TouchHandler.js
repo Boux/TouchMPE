@@ -3,6 +3,11 @@ import { TouchFilter } from './JitterFilter.js'
 /**
  * Handles Pointer Events on the canvas and translates them into
  * MPE engine calls (noteOn, noteOff, pitch bend, timbre, pressure).
+ *
+ * Pitch bend spans the full grid: sliding from one pad center to the
+ * next = colOffset semitones of bend. No per-pad clamping.
+ *
+ * Timbre spans two rows: pad center = 0.5, one row up = 1.0, one row down = 0.0.
  */
 export default class TouchHandler {
   constructor(canvas, engine, gridRenderer) {
@@ -10,14 +15,14 @@ export default class TouchHandler {
     this.engine = engine
     this.grid = gridRenderer
     this.touches = new Map()
-    // pointerId → TouchFilter
     this.filters = new Map()
 
     // Touch settings
     this.pressureMode = 'auto'
     this.slidePitchQuantize = false
     this.pitchBendRange = 48
-    this.deadZone = 0.05 // 5% of pad width
+    this.colOffset = 1
+    this.deadZonePx = 5 // pixels of movement before bend starts
 
     this._onPointerDown = this._onPointerDown.bind(this)
     this._onPointerMove = this._onPointerMove.bind(this)
@@ -41,6 +46,7 @@ export default class TouchHandler {
     this.pressureMode = settings.pressureMode || 'auto'
     this.slidePitchQuantize = settings.slidePitchQuantize || false
     this.pitchBendRange = settings.pitchBendRange || 48
+    this.colOffset = settings.colOffset || 1
   }
 
   _getCanvasPos(e) {
@@ -77,11 +83,10 @@ export default class TouchHandler {
     return Math.min(1, Math.max(0, (area - 40) / 360))
   }
 
-  _applyDeadZone(bendNorm) {
-    if (Math.abs(bendNorm) < this.deadZone) return 0
-    // Rescale so the range outside dead zone maps to 0..1
-    const sign = Math.sign(bendNorm)
-    return sign * (Math.abs(bendNorm) - this.deadZone) / (1 - this.deadZone)
+  _applyDeadZonePx(xOffset) {
+    if (Math.abs(xOffset) < this.deadZonePx) return 0
+    const sign = Math.sign(xOffset)
+    return sign * (Math.abs(xOffset) - this.deadZonePx)
   }
 
   _quantizeBend(bendNorm) {
@@ -96,12 +101,14 @@ export default class TouchHandler {
     const hit = this.grid.hitTest(pos.x, pos.y)
     if (!hit) return
 
-    // Create fresh filter for this touch
     const filter = new TouchFilter()
     this.filters.set(e.pointerId, filter)
 
     const pressure = this._getPressure(e)
-    const timbreNorm = this._calcTimbre(pos.y, hit.centerY, hit.height)
+    // Pad spacing = distance between adjacent pad centers
+    const padSpacing = hit.width + this.grid.gap
+    const rowSpacing = hit.height + this.grid.gap
+    const timbreNorm = this._calcTimbre(pos.y, hit.centerY, rowSpacing)
 
     const channel = this.engine.noteOn(e.pointerId, hit.note, pressure, timbreNorm)
 
@@ -114,6 +121,8 @@ export default class TouchHandler {
       padCenterY: hit.centerY,
       padWidth: hit.width,
       padHeight: hit.height,
+      padSpacing,
+      rowSpacing,
       currentX: pos.x,
       currentY: pos.y
     })
@@ -129,7 +138,6 @@ export default class TouchHandler {
     const rawPos = this._getCanvasPos(e)
     const now = e.timeStamp || performance.now()
 
-    // Apply jitter filter
     const filter = this.filters.get(e.pointerId)
     const pos = filter ? filter.filterPos(rawPos.x, rawPos.y, now) : rawPos
     const rawPressure = this._getPressure(e)
@@ -138,15 +146,17 @@ export default class TouchHandler {
     touch.currentX = pos.x
     touch.currentY = pos.y
 
-    // Pitch bend with dead zone
-    const xOffset = pos.x - touch.padCenterX
-    let bendNorm = Math.max(-1, Math.min(1, xOffset / (touch.padWidth / 2)))
-    bendNorm = this._applyDeadZone(bendNorm)
+    // Pitch bend: slide across the grid
+    // One pad spacing = colOffset semitones, normalized to pitchBendRange
+    const rawXOffset = pos.x - touch.padCenterX
+    const xOffset = this._applyDeadZonePx(rawXOffset)
+    const semitones = (xOffset / touch.padSpacing) * this.colOffset
+    let bendNorm = Math.max(-1, Math.min(1, semitones / this.pitchBendRange))
     bendNorm = this._quantizeBend(bendNorm)
     this.engine.updatePitchBend(e.pointerId, bendNorm)
 
-    // Timbre
-    const timbreNorm = this._calcTimbre(pos.y, touch.padCenterY, touch.padHeight)
+    // Timbre: one row up = max, one row down = min
+    const timbreNorm = this._calcTimbre(pos.y, touch.padCenterY, touch.rowSpacing)
     this.engine.updateTimbre(e.pointerId, timbreNorm)
 
     // Pressure
@@ -167,8 +177,12 @@ export default class TouchHandler {
     this.grid.setTouchActive(touch.row, touch.col, false, 0, 0.5, 0)
   }
 
-  _calcTimbre(y, padCenterY, padHeight) {
+  /**
+   * Timbre: center of pad = 0.5, one row up = 1.0, one row down = 0.0
+   * rowSpacing = distance between row centers (padHeight + gap)
+   */
+  _calcTimbre(y, padCenterY, rowSpacing) {
     const yOffset = padCenterY - y
-    return Math.max(0, Math.min(1, 0.5 + yOffset / padHeight))
+    return Math.max(0, Math.min(1, 0.5 + yOffset / (2 * rowSpacing)))
   }
 }
