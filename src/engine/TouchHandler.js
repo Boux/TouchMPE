@@ -19,7 +19,10 @@ export default class TouchHandler {
 
     // Touch settings
     this.pressureMode = 'auto'
-    this.slidePitchQuantize = false
+    this.slidePitchMode = 'continuous'
+    this.gravityRadius = 0.5
+    this.gravityStrength = 0.5
+    this.gravityDecay = 0.5
     this.pitchBendRange = 48
     this.colOffset = 1
     this.deadZonePx = 5 // pixels of movement before bend starts
@@ -44,9 +47,23 @@ export default class TouchHandler {
 
   applySettings(settings) {
     this.pressureMode = settings.pressureMode || 'auto'
-    this.slidePitchQuantize = settings.slidePitchQuantize || false
+    this.slidePitchMode = settings.slidePitchMode || 'continuous'
+    this.gravityRadius = settings.gravityRadius ?? 0.5
+    this.gravityStrength = settings.gravityStrength ?? 0.5
+    this.gravityDecay = settings.gravityDecay ?? 0.5
     this.pitchBendRange = settings.pitchBendRange || 48
     this.colOffset = settings.colOffset || 1
+  }
+
+  tickGravity() {
+    if (this.slidePitchMode !== 'assist') return
+    const now = performance.now()
+    for (const [pointerId, touch] of this.touches) {
+      const bendNorm = this._applyPitchMode(touch.lastRawBend, touch, now)
+      this.engine.updatePitchBend(pointerId, bendNorm)
+      const pitchX = touch.padCenterX + (bendNorm * this.pitchBendRange / this.colOffset) * touch.padSpacing
+      this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, null, null, pitchX, null, touch.movementWeight)
+    }
   }
 
   _getCanvasPos(e) {
@@ -89,10 +106,40 @@ export default class TouchHandler {
     return sign * (Math.abs(xOffset) - this.deadZonePx)
   }
 
-  _quantizeBend(bendNorm) {
-    if (!this.slidePitchQuantize) return bendNorm
-    const semitones = Math.round(bendNorm * this.pitchBendRange)
-    return semitones / this.pitchBendRange
+  _applyPitchMode(rawBend, touch, now) {
+    if (this.slidePitchMode === 'continuous') return rawBend
+    if (this.slidePitchMode === 'instant') {
+      return Math.round(rawBend * this.pitchBendRange) / this.pitchBendRange
+    }
+
+    // Movement weight: builds from speed, decays over time
+    const dt = Math.min((now - touch.lastBendTime) / 1000, 0.1)
+    touch.lastBendTime = now
+    const bendDelta = Math.abs(rawBend - touch.lastRawBend)
+    touch.movementWeight = Math.min(1, touch.movementWeight + bendDelta * 15)
+    touch.movementWeight = Math.max(0, touch.movementWeight - this.gravityDecay * dt * 6)
+    touch.lastRawBend = rawBend
+
+    // Gravity well
+    const quantized = Math.round(rawBend * this.pitchBendRange) / this.pitchBendRange
+    const halfSemitone = 0.5 / this.pitchBendRange
+    const radius = this.gravityRadius * halfSemitone
+    const dist = Math.abs(rawBend - quantized)
+
+    if (dist >= radius || radius === 0) {
+      // Outside radius: drain offset back to zero
+      touch.gravityOffset *= Math.max(0, 1 - dt * 10)
+    } else {
+      // Inside radius: pull toward center over time
+      // t controls speed (fast near center, slow at edge)
+      // target is always the full distance to center
+      const t = 1 - (dist / radius)
+      const targetOffset = quantized - rawBend
+      const speed = this.gravityStrength * t * (1 - touch.movementWeight) * dt * 10
+      touch.gravityOffset += (targetOffset - touch.gravityOffset) * Math.min(speed, 1)
+    }
+
+    return rawBend + touch.gravityOffset
   }
 
   _onPointerDown(e) {
@@ -122,10 +169,14 @@ export default class TouchHandler {
       padSpacing,
       rowSpacing,
       currentX: pos.x,
-      currentY: pos.y
+      currentY: pos.y,
+      lastRawBend: 0,
+      gravityOffset: 0,
+      movementWeight: 0,
+      lastBendTime: performance.now()
     })
 
-    this.grid.setTouchActive(hit.row, hit.col, true, 0, timbreNorm, pressure, pos.x, pos.y)
+    this.grid.setTouchActive(hit.row, hit.col, true, 0, timbreNorm, pressure, hit.centerX, pos.y, 0)
   }
 
   _onPointerMove(e) {
@@ -148,8 +199,8 @@ export default class TouchHandler {
     const rawXOffset = pos.x - touch.padCenterX
     const xOffset = this._applyDeadZonePx(rawXOffset)
     const semitones = (xOffset / touch.padSpacing) * this.colOffset
-    let bendNorm = Math.max(-1, Math.min(1, semitones / this.pitchBendRange))
-    bendNorm = this._quantizeBend(bendNorm)
+    const rawBend = Math.max(-1, Math.min(1, semitones / this.pitchBendRange))
+    const bendNorm = this._applyPitchMode(rawBend, touch, now)
     this.engine.updatePitchBend(e.pointerId, bendNorm)
 
     // Timbre: one row up = max, one row down = min
@@ -159,7 +210,8 @@ export default class TouchHandler {
     // Pressure
     this.engine.updatePressure(e.pointerId, pressure)
 
-    this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, timbreNorm, pressure, pos.x, pos.y)
+    const pitchX = touch.padCenterX + (bendNorm * this.pitchBendRange / this.colOffset) * touch.padSpacing
+    this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, timbreNorm, pressure, pitchX, pos.y, touch.movementWeight)
   }
 
   _onPointerUp(e) {

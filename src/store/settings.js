@@ -18,7 +18,10 @@ const DEFAULTS = {
 
   // Touch
   noteOnQuantize: true,
-  slidePitchQuantize: false,
+  slidePitchMode: 'continuous',
+  gravityRadius: 0.5,
+  gravityStrength: 0.5,
+  gravityDecay: 0.5,
   pressureMode: 'auto'
 }
 
@@ -70,6 +73,11 @@ export function loadSettings() {
       // Remove legacy cols/rows if present
       delete parsed.cols
       delete parsed.rows
+      // Migrate old boolean slidePitchQuantize to new mode
+      if ('slidePitchQuantize' in parsed) {
+        parsed.slidePitchMode = parsed.slidePitchQuantize ? 'instant' : 'continuous'
+        delete parsed.slidePitchQuantize
+      }
       return { ...DEFAULTS, ...parsed }
     }
   } catch (e) {

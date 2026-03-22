@@ -77,6 +77,7 @@ export default {
 
     _startRenderLoop() {
       const loop = () => {
+        if (this.touchHandler) this.touchHandler.tickGravity()
         this.renderer.draw()
         if (this.engine) this.engine.flush()
         this.animFrameId = requestAnimationFrame(loop)

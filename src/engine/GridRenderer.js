@@ -41,22 +41,23 @@ export default class GridRenderer {
     this.grid = grid
     this.touchState = grid.map(row => row.map(() => ({
       active: false, bendNorm: 0, timbreNorm: 0.5, pressure: 0,
-      pointerX: 0, pointerY: 0
+      pointerX: 0, pointerY: 0, movementWeight: 0
     })))
     this._computePadGeometry()
     this.staticDirty = true
     this.dynamicDirty = true
   }
 
-  setTouchActive(row, col, active, bendNorm, timbreNorm, pressure, pointerX = 0, pointerY = 0) {
+  setTouchActive(row, col, active, bendNorm, timbreNorm, pressure, pointerX = 0, pointerY = 0, movementWeight = null) {
     if (!this.touchState[row] || !this.touchState[row][col]) return
     const s = this.touchState[row][col]
     s.active = active
-    s.bendNorm = bendNorm
-    s.timbreNorm = timbreNorm
-    s.pressure = pressure
-    s.pointerX = pointerX
-    s.pointerY = pointerY
+    if (bendNorm !== null) s.bendNorm = bendNorm
+    if (timbreNorm !== null) s.timbreNorm = timbreNorm
+    if (pressure !== null) s.pressure = pressure
+    if (pointerX !== null) s.pointerX = pointerX
+    if (pointerY !== null) s.pointerY = pointerY
+    if (movementWeight !== null) s.movementWeight = movementWeight
     this.dynamicDirty = true
     this._updateHasActiveTouches()
   }
@@ -246,6 +247,19 @@ export default class GridRenderer {
           ctx.moveTo(padCenterX, padCenterY)
           ctx.lineTo(padCenterX, fingerY)
           ctx.stroke()
+        }
+
+        // Movement weight debug bar
+        if (ts.movementWeight > 0.01) {
+          const barW = pw * 0.6
+          const barH = 3 * dpr
+          const barX = padCenterX - barW / 2
+          const barY = py + ph - 6 * dpr
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
+          ctx.fillRect(barX, barY, barW, barH)
+          const g = Math.round(255 * (1 - ts.movementWeight))
+          ctx.fillStyle = `rgba(255, ${g}, 0, 0.7)`
+          ctx.fillRect(barX, barY, barW * ts.movementWeight, barH)
         }
       }
     }
