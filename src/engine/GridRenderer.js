@@ -16,6 +16,7 @@ export default class GridRenderer {
     this.grid = null
     this.gap = 3
     this.dpr = window.devicePixelRatio || 1
+    this.mpeMode = true
 
     // Offscreen canvas for static pad layer
     this.staticCanvas = new OffscreenCanvas(1, 1)
@@ -229,38 +230,28 @@ export default class GridRenderer {
           ctx.fillText(octave, padCenterX, padCenterY + fontSize * 0.55)
         }
 
-        // Pitch bend line — horizontal from pad center to finger X
-        if (Math.abs(fingerX - padCenterX) > 2 * dpr) {
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
-          ctx.lineWidth = 1.5 * dpr
-          ctx.beginPath()
-          ctx.moveTo(padCenterX, padCenterY)
-          ctx.lineTo(fingerX, padCenterY)
-          ctx.stroke()
+        if (this.mpeMode) {
+          // Pitch bend line — horizontal from pad center to finger X
+          if (Math.abs(fingerX - padCenterX) > 2 * dpr) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
+            ctx.lineWidth = 1.5 * dpr
+            ctx.beginPath()
+            ctx.moveTo(padCenterX, padCenterY)
+            ctx.lineTo(fingerX, padCenterY)
+            ctx.stroke()
+          }
+
+          // Timbre line — vertical from pad center to finger Y
+          if (Math.abs(fingerY - padCenterY) > 2 * dpr) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
+            ctx.lineWidth = 1.5 * dpr
+            ctx.beginPath()
+            ctx.moveTo(padCenterX, padCenterY)
+            ctx.lineTo(padCenterX, fingerY)
+            ctx.stroke()
+          }
         }
 
-        // Timbre line — vertical from pad center to finger Y
-        if (Math.abs(fingerY - padCenterY) > 2 * dpr) {
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
-          ctx.lineWidth = 1.5 * dpr
-          ctx.beginPath()
-          ctx.moveTo(padCenterX, padCenterY)
-          ctx.lineTo(padCenterX, fingerY)
-          ctx.stroke()
-        }
-
-        // Movement weight debug bar
-        if (ts.movementWeight > 0.01) {
-          const barW = pw * 0.6
-          const barH = 3 * dpr
-          const barX = padCenterX - barW / 2
-          const barY = py + ph - 6 * dpr
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
-          ctx.fillRect(barX, barY, barW, barH)
-          const g = Math.round(255 * (1 - ts.movementWeight))
-          ctx.fillStyle = `rgba(255, ${g}, 0, 0.7)`
-          ctx.fillRect(barX, barY, barW * ts.movementWeight, barH)
-        }
       }
     }
   }

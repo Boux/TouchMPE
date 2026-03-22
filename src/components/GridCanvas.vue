@@ -59,6 +59,7 @@ export default {
         scaleRoot: settings.scaleRoot
       })
       this.renderer.setGrid(grid)
+      this.renderer.mpeMode = settings.mpeMode !== false
       if (this.engine) {
         this.engine.applySettings(settings)
       }

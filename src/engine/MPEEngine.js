@@ -10,6 +10,7 @@ export default class MPEEngine {
     this.midiOutput = midiOutput
     this.allocator = new ChannelAllocator(15)
     this.pitchBendRange = 48 // semitones
+    this.mpeMode = true
     this.pendingBytes = []
   }
 
@@ -26,8 +27,9 @@ export default class MPEEngine {
     }
 
     this.pitchBendRange = settings.pitchBendRange
+    this.mpeMode = settings.mpeMode !== false
 
-    if ((memberCountChanged || pbRangeChanged) && this.midiOutput.output) {
+    if (this.mpeMode && (memberCountChanged || pbRangeChanged) && this.midiOutput.output) {
       this.sendConfig()
     }
   }
@@ -60,14 +62,20 @@ export default class MPEEngine {
    */
   noteOn(pointerId, note, velocity, initialTimbreNorm = 0.5) {
     const vel = Math.max(1, Math.min(127, Math.round(velocity * 127)))
+
+    if (!this.mpeMode) {
+      // MIDI mode: all notes on channel 0, no expression setup
+      this.allocator.allocate(pointerId, note)
+      this.pendingBytes.push(...msg.noteOn(0, note, vel))
+      return 0
+    }
+
     const { channel, stolen } = this.allocator.allocate(pointerId, note)
 
-    // If voice stealing, send Note Off for the stolen note
     if (stolen) {
       this.pendingBytes.push(...msg.noteOff(channel, stolen.note))
     }
 
-    // Send initial state before Note On: pitch bend center, CC74 timbre
     const timbreValue = Math.round(Math.max(0, Math.min(1, initialTimbreNorm)) * 127)
     this.pendingBytes.push(
       ...msg.pitchBend(channel, 8192),
@@ -87,7 +95,7 @@ export default class MPEEngine {
 
     const info = this.allocator.active.get(channel)
     if (info) {
-      this.pendingBytes.push(...msg.noteOff(channel, info.note))
+      this.pendingBytes.push(...msg.noteOff(this.mpeMode ? channel : 0, info.note))
     }
     this.allocator.release(channel)
   }
@@ -97,6 +105,7 @@ export default class MPEEngine {
    * bendNorm: -1.0 to +1.0 (normalized displacement from pad center)
    */
   updatePitchBend(pointerId, bendNorm) {
+    if (!this.mpeMode) return
     const channel = this.allocator.channelForPointer(pointerId)
     if (channel === null) return
 
@@ -110,6 +119,7 @@ export default class MPEEngine {
    * timbreNorm: 0.0 to 1.0
    */
   updateTimbre(pointerId, timbreNorm) {
+    if (!this.mpeMode) return
     const channel = this.allocator.channelForPointer(pointerId)
     if (channel === null) return
 
@@ -122,6 +132,7 @@ export default class MPEEngine {
    * pressureNorm: 0.0 to 1.0
    */
   updatePressure(pointerId, pressureNorm) {
+    if (!this.mpeMode) return
     const channel = this.allocator.channelForPointer(pointerId)
     if (channel === null) return
 

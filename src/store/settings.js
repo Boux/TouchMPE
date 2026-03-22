@@ -13,6 +13,7 @@ const DEFAULTS = {
   scaleRoot: 0,
 
   // MPE
+  mpeMode: true,
   pitchBendRange: 48,
   memberChannels: 15,
 

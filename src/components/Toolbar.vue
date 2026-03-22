@@ -16,7 +16,7 @@
     ></span>
 
     <button class="toolbar-btn" @click="menuOpen = !menuOpen">
-      MIDI
+      {{ settings.mpeMode ? 'MPE' : 'MIDI' }}
     </button>
 
     <button class="toolbar-btn" :class="{ active: controlsOpen }" @click="$emit('toggle-controls')">
@@ -50,6 +50,17 @@
           </select>
         </label>
 
+        <label class="menu-label">
+          Mode
+          <select
+            :value="settings.mpeMode ? 'mpe' : 'midi'"
+            @change="$emit('toggle-mpe', $event.target.value === 'mpe')"
+          >
+            <option value="mpe">MPE</option>
+            <option value="midi">MIDI</option>
+          </select>
+        </label>
+
         <button class="menu-btn panic" @click="$emit('panic'); menuOpen = false">
           Panic (All Notes Off)
         </button>
@@ -70,7 +81,7 @@ export default {
     controlsOpen: { type: Boolean, default: false }
   },
 
-  emits: ['select-output', 'toggle-settings', 'toggle-controls', 'octave-up', 'octave-down', 'panic'],
+  emits: ['select-output', 'toggle-settings', 'toggle-controls', 'toggle-mpe', 'octave-up', 'octave-down', 'panic'],
 
   data() {
     return {

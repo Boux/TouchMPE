@@ -12,6 +12,7 @@
       @octave-down="shiftOctave(-1)"
       @preset-change="onPresetChange"
       @panic="onPanic"
+      @toggle-mpe="onToggleMpe"
       @toggle-controls="toggleControlPanel"
     />
     <div class="main-area" :class="'dock-' + controlConfig.dockSide" :data-cc-visible="controlConfig.visible">
@@ -132,6 +133,10 @@ export default {
 
     onPanic() {
       if (this.engine) this.engine.panic()
+    },
+
+    onToggleMpe(mpeMode) {
+      this.onSettingsUpdate({ ...this.settings, mpeMode })
     },
 
     toggleControlPanel() {
