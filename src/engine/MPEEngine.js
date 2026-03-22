@@ -130,6 +130,15 @@ export default class MPEEngine {
   }
 
   /**
+   * Send a CC message on the manager channel (channel 0).
+   * value: 0–127
+   */
+  sendCC(ccNumber, value) {
+    const clamped = Math.round(Math.max(0, Math.min(127, value)))
+    this.pendingBytes.push(...msg.controlChange(0, ccNumber, clamped))
+  }
+
+  /**
    * Flush all pending MIDI messages to the output. Call once per frame.
    */
   flush() {

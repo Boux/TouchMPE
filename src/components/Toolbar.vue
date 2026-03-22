@@ -19,6 +19,10 @@
       MIDI
     </button>
 
+    <button class="toolbar-btn" @click="$emit('toggle-controls')">
+      Controls
+    </button>
+
     <button
       class="toolbar-btn"
       :class="{ active: settingsOpen }"
@@ -65,7 +69,7 @@ export default {
     settingsOpen: { type: Boolean, default: false }
   },
 
-  emits: ['select-output', 'toggle-settings', 'octave-up', 'octave-down', 'panic'],
+  emits: ['select-output', 'toggle-settings', 'toggle-controls', 'octave-up', 'octave-down', 'panic'],
 
   data() {
     return {

@@ -11,13 +11,22 @@
       @octave-down="shiftOctave(-1)"
       @preset-change="onPresetChange"
       @panic="onPanic"
+      @toggle-controls="toggleControlPanel"
     />
-    <GridCanvas
-      ref="gridCanvas"
-      :settings="settings"
-      :midi-output="midiOutput"
-      @engine-ready="onEngineReady"
-    />
+    <div class="main-area" :class="'dock-' + controlConfig.dockSide">
+      <ControlPanel
+        v-if="controlConfig.visible"
+        :config="controlConfig"
+        :engine="engine"
+        @update="onControlConfigUpdate"
+      />
+      <GridCanvas
+        ref="gridCanvas"
+        :settings="settings"
+        :midi-output="midiOutput"
+        @engine-ready="onEngineReady"
+      />
+    </div>
     <SettingsPanel
       v-if="settingsOpen"
       :settings="settings"
@@ -31,18 +40,21 @@
 import GridCanvas from './components/GridCanvas.vue'
 import Toolbar from './components/Toolbar.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
+import ControlPanel from './components/ControlPanel.vue'
 import MIDIOutput from './midi/MIDIOutput.js'
 import { PRESETS } from './layout/KeyboardLayout.js'
 import { loadSettings, saveSettings } from './store/settings.js'
+import { loadControlConfig, saveControlConfig } from './store/controlConfig.js'
 
 export default {
   name: 'App',
-  components: { GridCanvas, Toolbar, SettingsPanel },
+  components: { GridCanvas, Toolbar, SettingsPanel, ControlPanel },
 
   data() {
     return {
       settingsOpen: false,
       settings: loadSettings(),
+      controlConfig: loadControlConfig(),
       midiOutput: new MIDIOutput(),
       midiOutputs: [],
       midiOutputName: null,
@@ -119,6 +131,16 @@ export default {
 
     onPanic() {
       if (this.engine) this.engine.panic()
+    },
+
+    toggleControlPanel() {
+      this.controlConfig.visible = !this.controlConfig.visible
+      saveControlConfig(this.controlConfig)
+    },
+
+    onControlConfigUpdate(config) {
+      Object.assign(this.controlConfig, config)
+      saveControlConfig(this.controlConfig)
     }
   }
 }
@@ -147,4 +169,21 @@ html, body
   flex-direction: column
   width: 100%
   height: 100%
+
+.main-area
+  display: flex
+  flex: 1
+  min-height: 0
+
+  &.dock-left, &.dock-right
+    flex-direction: row
+
+  &.dock-top, &.dock-bottom
+    flex-direction: column
+
+  &.dock-right
+    flex-direction: row-reverse
+
+  &.dock-bottom
+    flex-direction: column-reverse
 </style>
