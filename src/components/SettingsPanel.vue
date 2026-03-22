@@ -10,16 +10,6 @@
         <h3>Keyboard Layout</h3>
 
         <label>
-          Preset
-          <select :value="settings.preset" @change="applyPreset($event.target.value)">
-            <option v-for="(preset, key) in presets" :key="key" :value="key">
-              {{ preset.label }}
-            </option>
-            <option value="custom">Custom</option>
-          </select>
-        </label>
-
-        <label>
           Pad Size
           <div class="slider-group">
             <input type="range" :value="settings.padScale" min="0.5" max="2.0" step="0.05"
@@ -72,6 +62,8 @@
             <option v-for="(name, i) in noteNames" :key="i" :value="i">{{ name }}</option>
           </select>
         </label>
+
+        <button class="reset-btn" @click="resetLayout">Reset Layout</button>
       </div>
 
       <div v-if="settings.mpeMode !== false" class="settings-section">
@@ -173,8 +165,6 @@
 </template>
 
 <script>
-import { PRESETS } from '../layout/KeyboardLayout.js'
-
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 export default {
@@ -188,8 +178,7 @@ export default {
 
   data() {
     return {
-      noteNames: NOTE_NAMES,
-      presets: PRESETS
+      noteNames: NOTE_NAMES
     }
   },
 
@@ -224,18 +213,16 @@ export default {
       this.$emit('update', { ...this.settings, gravityPreset: name, ...values })
     },
 
-    applyPreset(presetName) {
-      const preset = PRESETS[presetName]
-      if (preset) {
-        this.$emit('update', {
-          ...this.settings,
-          preset: presetName,
-          rowOffset: preset.rowOffset,
-          colOffset: preset.colOffset
-        })
-      } else {
-        this.$emit('update', { ...this.settings, preset: presetName })
-      }
+    resetLayout() {
+      this.$emit('update', {
+        ...this.settings,
+        padScale: 1.0,
+        rootNote: 36,
+        rowOffset: 5,
+        colOffset: 1,
+        scale: 'chromatic',
+        scaleRoot: 0
+      })
     }
   }
 }
@@ -267,6 +254,20 @@ export default {
   h2
     font-size: 16px
     color: #ff8800
+
+.reset-btn
+  background: #333
+  color: #ccc
+  border: 1px solid #444
+  border-radius: 6px
+  padding: 8px
+  font-size: 13px
+  cursor: pointer
+  min-height: 36px
+  margin-top: 4px
+
+  &:hover
+    background: #444
 
 .close-btn
   background: none
