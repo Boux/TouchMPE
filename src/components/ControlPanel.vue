@@ -71,7 +71,8 @@
     </div>
 
     <!-- Add control popup -->
-    <div v-if="popup" ref="addPopup" class="floating-popup">
+    <div v-if="popup" ref="addPopup" class="floating-popup"
+      @pointerdown="startPopupDrag($event, 'addPopup')">
       <label>
         Grid Size
         <div class="slider-group">
@@ -91,23 +92,23 @@
     </div>
 
     <!-- Control config popup -->
-    <div v-if="configCtrl" ref="configPopup" class="floating-popup">
+    <div v-if="selectedControl" ref="configPopup" class="floating-popup"
+      @pointerdown="startPopupDrag($event, 'configPopup')">
       <label>
         Label
-        <input type="text" v-model="configCtrl.label" @input="saveConfig" />
+        <input type="text" v-model="selectedControl.label" @input="saveConfig" />
       </label>
       <label>
         CC Number
-        <input type="number" v-model.number="configCtrl.cc" min="0" max="127" @input="saveConfig" />
+        <input type="number" v-model.number="selectedControl.cc" min="0" max="127" @input="saveConfig" />
       </label>
-      <label v-if="configCtrl.type === 'xypad'">
+      <label v-if="selectedControl.type === 'xypad'">
         CC Y-Axis
-        <input type="number" v-model.number="configCtrl.cc2" min="0" max="127" @input="saveConfig" />
+        <input type="number" v-model.number="selectedControl.cc2" min="0" max="127" @input="saveConfig" />
       </label>
-      <button class="delete-config-btn" @click="deleteControl(configCtrl.id); configCtrl = null">
+      <button class="delete-config-btn" @click="deleteControl(selectedControl.id)">
         Delete Control
       </button>
-      <button @click="configCtrl = null">Close</button>
     </div>
   </div>
 </template>
@@ -130,7 +131,6 @@ export default {
     return {
       popup: null,
       popupCell: null,
-      configCtrl: null,
       selectedCtrl: null,
       dragStart: null,
       dragEnd: null,
@@ -151,8 +151,13 @@ export default {
       if (this.popup && this.$refs.addPopup && !this.$refs.addPopup.contains(e.target)) {
         this.popup = null
       }
-      if (this.configCtrl && this.$refs.configPopup && !this.$refs.configPopup.contains(e.target)) {
-        this.configCtrl = null
+      // Deselect if clicking outside both the popup and the panel grid
+      if (this.selectedCtrl) {
+        const inPopup = this.$refs.configPopup && this.$refs.configPopup.contains(e.target)
+        const inGrid = this.$refs.grid && this.$refs.grid.contains(e.target)
+        if (!inPopup && !inGrid) {
+          this.selectedCtrl = null
+        }
       }
     }
     document.addEventListener('pointerdown', this._onDocClick, true)
@@ -213,6 +218,11 @@ export default {
         }
       }
       return cells
+    },
+
+    selectedControl() {
+      if (!this.selectedCtrl) return null
+      return this.config.controls.find(c => c.id === this.selectedCtrl) || null
     }
   },
 
@@ -287,6 +297,36 @@ export default {
       return col >= c1 && col <= c2 && row >= r1 && row <= r2
     },
 
+    startPopupDrag(e, refName) {
+      if (e.target.closest('input, button, .slider-group')) return
+      const el = this.$refs[refName]
+      if (!el) return
+      e.preventDefault()
+      const startX = e.clientX
+      const startY = e.clientY
+      const startLeft = parseInt(el.style.left) || 0
+      const startTop = parseInt(el.style.top) || 0
+      const onMove = (e) => {
+        el.style.left = (startLeft + e.clientX - startX) + 'px'
+        el.style.top = (startTop + e.clientY - startY) + 'px'
+      }
+      const onUp = () => {
+        document.removeEventListener('pointermove', onMove)
+        document.removeEventListener('pointerup', onUp)
+      }
+      document.addEventListener('pointermove', onMove)
+      document.addEventListener('pointerup', onUp)
+    },
+
+    repositionConfigPopup() {
+      if (!this.selectedCtrl) return
+      this.$nextTick(() => {
+        const refArr = this.$refs['ctrl-' + this.selectedCtrl]
+        const anchor = Array.isArray(refArr) ? refArr[0] : refArr
+        if (anchor) this.positionFloating(anchor, 'configPopup')
+      })
+    },
+
     positionFloating(anchorEl, floatingRef) {
       this.$nextTick(() => {
         const floating = this.$refs[floatingRef]
@@ -319,38 +359,58 @@ export default {
       const cell = this.cellFromEvent(e)
       if (!cell) return
 
-      // If a control is selected, start drag to resize/move
       if (this.selectedCtrl) {
-        if (!this.isCellOccupied(cell.col, cell.row)) {
-          this.dragStart = cell
-          this.dragEnd = cell
-          this.$refs.grid.setPointerCapture(e.pointerId)
-        }
+        this._gridDownStart = { x: e.clientX, y: e.clientY, cell, dragging: false }
+        this.$refs.grid.setPointerCapture(e.pointerId)
         return
       }
     },
 
     onGridMove(e) {
-      if (this.selectedCtrl && this.dragStart) {
-        const cell = this.cellFromEvent(e)
-        if (cell) this.dragEnd = cell
+      const s = this._gridDownStart
+      if (!s || !this.selectedCtrl) return
+
+      if (!s.dragging) {
+        const dx = Math.abs(e.clientX - s.x)
+        const dy = Math.abs(e.clientY - s.y)
+        if (dx > 8 || dy > 8) {
+          s.dragging = true
+          this.dragStart = s.cell
+          this.dragEnd = s.cell
+        }
+        return
       }
+
+      const cell = this.cellFromEvent(e)
+      if (cell) this.dragEnd = cell
     },
 
     onGridUp(e) {
-      if (this.selectedCtrl && this.dragStart && this.dragEnd) {
+      const s = this._gridDownStart
+      this._gridDownStart = null
+
+      if (this.selectedCtrl && s && s.dragging && this.dragStart && this.dragEnd) {
         this.resizeSelectedTo(this.dragStart, this.dragEnd)
+      } else if (this.selectedCtrl && s && !s.dragging) {
+        // Single tap → deselect
+        this.deselectCtrl()
       }
+
       this.dragStart = null
       this.dragEnd = null
+    },
 
-      // Tap on empty cell with selected ctrl → move it there
-      if (this.selectedCtrl && !this.dragStart) {
-        const cell = this.cellFromEvent(e)
-        if (cell && !this.isCellOccupied(cell.col, cell.row)) {
-          this.moveSelectedTo(cell)
-        }
+    nextAvailableCC(preferred, ...exclude) {
+      const used = new Set(exclude)
+      for (const ctrl of this.config.controls) {
+        used.add(ctrl.cc)
+        if (ctrl.cc2 != null) used.add(ctrl.cc2)
       }
+      if (!used.has(preferred)) return preferred
+      for (let cc = 1; cc <= 127; cc++) {
+        if (!used.has(cc)) return cc
+      }
+      return preferred
     },
 
     // --- Place control from popup ---
@@ -366,24 +426,24 @@ export default {
         id: generateId(),
         type,
         label: '',
-        cc: ccDefaults[type],
+        cc: this.nextAvailableCC(ccDefaults[type]),
         col: cell.col,
         row: cell.row,
         colSpan: 1,
         rowSpan: 1
       }
-      if (type === 'xypad') ctrl.cc2 = 2
+      if (type === 'xypad') ctrl.cc2 = this.nextAvailableCC(2, ctrl.cc)
       this.config.controls.push(ctrl)
       this.saveConfig()
       this.popup = null
       this.selectedCtrl = ctrl.id
+      this.repositionConfigPopup()
     },
 
     // --- Selected control actions ---
     moveSelectedTo(cell) {
       const ctrl = this.config.controls.find(c => c.id === this.selectedCtrl)
       if (!ctrl) return
-      // Check no collision at new position
       for (let r = cell.row; r < cell.row + ctrl.rowSpan; r++) {
         for (let c = cell.col; c < cell.col + ctrl.colSpan; c++) {
           if (this.isCellOccupiedByOther(c, r, ctrl.id)) return
@@ -392,6 +452,7 @@ export default {
       ctrl.col = cell.col
       ctrl.row = cell.row
       this.saveConfig()
+      this.repositionConfigPopup()
     },
 
     resizeSelectedTo(from, to) {
@@ -415,6 +476,7 @@ export default {
       ctrl.colSpan = c2 - c1 + 1
       ctrl.rowSpan = r2 - r1 + 1
       this.saveConfig()
+      this.repositionConfigPopup()
     },
 
     isCellOccupiedByOther(col, row, excludeId) {
@@ -436,11 +498,8 @@ export default {
 
     // --- Config ---
     openConfig(ctrl) {
-      this.configCtrl = ctrl
       this.selectedCtrl = ctrl.id
-      const refArr = this.$refs['ctrl-' + ctrl.id]
-      const anchor = Array.isArray(refArr) ? refArr[0] : refArr
-      if (anchor) this.positionFloating(anchor, 'configPopup')
+      this.repositionConfigPopup()
     },
 
     deleteControl(id) {
@@ -489,15 +548,13 @@ export default {
     onControlDown(e, ctrl) {
       if (this.selectedCtrl) {
         if (this.selectedCtrl === ctrl.id) {
-          // Drag from the selected control itself to move/resize
+          // Track for drag threshold
           const cell = this.cellFromEvent(e)
-          if (cell) {
-            this.dragStart = cell
-            this.dragEnd = cell
-            this.$refs.grid.setPointerCapture(e.pointerId)
-          }
+          this._gridDownStart = { x: e.clientX, y: e.clientY, cell, dragging: false }
+          this.$refs.grid.setPointerCapture(e.pointerId)
         } else {
-          this.deselectCtrl()
+          this.selectedCtrl = ctrl.id
+          this.repositionConfigPopup()
         }
         return
       }
