@@ -33,6 +33,8 @@
             @change="update('rows', +$event.target.value)" />
         </label>
 
+        <button class="menu-btn" @click="autoDetectSize">Auto-detect grid size</button>
+
         <label>
           Root Note
           <div class="compound-input">
@@ -173,6 +175,15 @@ export default {
       const midi = (octave + 1) * 12 + pitchClass
       const clamped = Math.max(0, Math.min(127, midi))
       this.$emit('update', { ...this.settings, rootNote: clamped, preset: 'custom' })
+    },
+
+    autoDetectSize() {
+      const w = window.innerWidth
+      const h = window.innerHeight - 36
+      const target = 70
+      const cols = Math.max(4, Math.min(16, Math.round(w / target)))
+      const rows = Math.max(2, Math.min(8, Math.round(h / target)))
+      this.$emit('update', { ...this.settings, cols, rows })
     },
 
     applyPreset(presetName) {

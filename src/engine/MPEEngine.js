@@ -36,14 +36,22 @@ export default class MPEEngine {
    * Send MPE configuration to the output (zone config + pitch bend sensitivity).
    */
   sendConfig() {
-    const bytes = [
-      ...msg.mpeConfig(this.allocator.memberCount),
-      ...msg.pitchBendSensitivity(0, 2) // master: ±2 semitones
-    ]
+    // Send each CC message individually so the USB MIDI transport
+    // and DAW can parse the RPN sequence correctly.
+    this._sendRPN(msg.mpeConfig(this.allocator.memberCount))
+    this._sendRPN(msg.pitchBendSensitivity(0, 2)) // master: ±2 semitones
     for (let ch = 1; ch <= this.allocator.memberCount; ch++) {
-      bytes.push(...msg.pitchBendSensitivity(ch, this.pitchBendRange))
+      this._sendRPN(msg.pitchBendSensitivity(ch, this.pitchBendRange))
     }
-    this.midiOutput.send(bytes)
+  }
+
+  /**
+   * Send an RPN message as individual 3-byte CC messages.
+   */
+  _sendRPN(bytes) {
+    for (let i = 0; i < bytes.length; i += 3) {
+      this.midiOutput.send(bytes.slice(i, i + 3))
+    }
   }
 
   /**
@@ -125,22 +133,28 @@ export default class MPEEngine {
    * Flush all pending MIDI messages to the output. Call once per frame.
    */
   flush() {
-    if (this.pendingBytes.length > 0) {
-      this.midiOutput.send(this.pendingBytes)
-      this.pendingBytes = []
+    if (this.pendingBytes.length === 0) return
+    // Parse and send each MIDI message individually.
+    // Status byte high nibble determines message length.
+    let i = 0
+    while (i < this.pendingBytes.length) {
+      const status = this.pendingBytes[i] & 0xF0
+      // Channel Pressure and Program Change are 2 bytes, everything else is 3
+      const len = (status === 0xC0 || status === 0xD0) ? 2 : 3
+      this.midiOutput.send(this.pendingBytes.slice(i, i + len))
+      i += len
     }
+    this.pendingBytes = []
   }
 
   /**
    * Send All Notes Off on all channels. Call on page unload or panic.
    */
   panic() {
-    const bytes = []
     for (let ch = 0; ch <= 15; ch++) {
-      bytes.push(...msg.allNotesOff(ch))
-      bytes.push(...msg.pitchBend(ch, 8192))
+      this.midiOutput.send(msg.allNotesOff(ch))
+      this.midiOutput.send(msg.pitchBend(ch, 8192))
     }
-    this.midiOutput.send(bytes)
     this.allocator.setMemberCount(this.allocator.memberCount)
   }
 }

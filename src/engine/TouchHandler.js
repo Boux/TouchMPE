@@ -1,3 +1,5 @@
+import { TouchFilter } from './JitterFilter.js'
+
 /**
  * Handles Pointer Events on the canvas and translates them into
  * MPE engine calls (noteOn, noteOff, pitch bend, timbre, pressure).
@@ -8,11 +10,14 @@ export default class TouchHandler {
     this.engine = engine
     this.grid = gridRenderer
     this.touches = new Map()
+    // pointerId → TouchFilter
+    this.filters = new Map()
 
     // Touch settings
-    this.pressureMode = 'auto' // 'auto', 'force', 'area', 'fixed'
+    this.pressureMode = 'auto'
     this.slidePitchQuantize = false
     this.pitchBendRange = 48
+    this.deadZone = 0.05 // 5% of pad width
 
     this._onPointerDown = this._onPointerDown.bind(this)
     this._onPointerMove = this._onPointerMove.bind(this)
@@ -56,7 +61,6 @@ export default class TouchHandler {
         return 0.7
       case 'auto':
       default:
-        // Use force if available, fall back to area
         if (e.pressure !== undefined && e.pressure !== 0.5 && e.pressure !== 0) {
           return e.pressure
         }
@@ -73,9 +77,15 @@ export default class TouchHandler {
     return Math.min(1, Math.max(0, (area - 40) / 360))
   }
 
+  _applyDeadZone(bendNorm) {
+    if (Math.abs(bendNorm) < this.deadZone) return 0
+    // Rescale so the range outside dead zone maps to 0..1
+    const sign = Math.sign(bendNorm)
+    return sign * (Math.abs(bendNorm) - this.deadZone) / (1 - this.deadZone)
+  }
+
   _quantizeBend(bendNorm) {
     if (!this.slidePitchQuantize) return bendNorm
-    // Snap to nearest semitone boundary
     const semitones = Math.round(bendNorm * this.pitchBendRange)
     return semitones / this.pitchBendRange
   }
@@ -85,6 +95,10 @@ export default class TouchHandler {
     const pos = this._getCanvasPos(e)
     const hit = this.grid.hitTest(pos.x, pos.y)
     if (!hit) return
+
+    // Create fresh filter for this touch
+    const filter = new TouchFilter()
+    this.filters.set(e.pointerId, filter)
 
     const pressure = this._getPressure(e)
     const timbreNorm = this._calcTimbre(pos.y, hit.centerY, hit.height)
@@ -112,13 +126,22 @@ export default class TouchHandler {
     if (!touch) return
 
     e.preventDefault()
-    const pos = this._getCanvasPos(e)
+    const rawPos = this._getCanvasPos(e)
+    const now = e.timeStamp || performance.now()
+
+    // Apply jitter filter
+    const filter = this.filters.get(e.pointerId)
+    const pos = filter ? filter.filterPos(rawPos.x, rawPos.y, now) : rawPos
+    const rawPressure = this._getPressure(e)
+    const pressure = filter ? filter.filterPressure(rawPressure, now) : rawPressure
+
     touch.currentX = pos.x
     touch.currentY = pos.y
 
-    // Pitch bend
+    // Pitch bend with dead zone
     const xOffset = pos.x - touch.padCenterX
     let bendNorm = Math.max(-1, Math.min(1, xOffset / (touch.padWidth / 2)))
+    bendNorm = this._applyDeadZone(bendNorm)
     bendNorm = this._quantizeBend(bendNorm)
     this.engine.updatePitchBend(e.pointerId, bendNorm)
 
@@ -127,7 +150,6 @@ export default class TouchHandler {
     this.engine.updateTimbre(e.pointerId, timbreNorm)
 
     // Pressure
-    const pressure = this._getPressure(e)
     this.engine.updatePressure(e.pointerId, pressure)
 
     this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, timbreNorm, pressure)
@@ -140,6 +162,7 @@ export default class TouchHandler {
     e.preventDefault()
     this.engine.noteOff(e.pointerId)
     this.touches.delete(e.pointerId)
+    this.filters.delete(e.pointerId)
 
     this.grid.setTouchActive(touch.row, touch.col, false, 0, 0.5, 0)
   }
