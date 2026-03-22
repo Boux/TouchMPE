@@ -156,21 +156,22 @@ export default class GridRenderer {
           ctx.stroke()
         }
 
-        // Note name
-        const name = noteNameShort(cell.note)
-        const fontSize = Math.min(pw, ph) * 0.28
-        ctx.fillStyle = cell.inScale ? '#999' : '#444'
-        ctx.font = `600 ${fontSize}px -apple-system, sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(name, px + pw / 2, py + ph / 2 - fontSize * 0.15)
+        // Note name and octave (only for in-scale notes)
+        if (cell.inScale) {
+          const name = noteNameShort(cell.note)
+          const fontSize = Math.min(pw, ph) * 0.28
+          ctx.fillStyle = '#999'
+          ctx.font = `600 ${fontSize}px -apple-system, sans-serif`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(name, px + pw / 2, py + ph / 2 - fontSize * 0.15)
 
-        // Octave number (smaller, below)
-        const octave = Math.floor(cell.note / 12) - 1
-        const octFontSize = fontSize * 0.55
-        ctx.fillStyle = cell.inScale ? '#555' : '#333'
-        ctx.font = `${octFontSize}px -apple-system, sans-serif`
-        ctx.fillText(octave, px + pw / 2, py + ph / 2 + fontSize * 0.55)
+          const octave = Math.floor(cell.note / 12) - 1
+          const octFontSize = fontSize * 0.55
+          ctx.fillStyle = '#555'
+          ctx.font = `${octFontSize}px -apple-system, sans-serif`
+          ctx.fillText(octave, px + pw / 2, py + ph / 2 + fontSize * 0.55)
+        }
       }
     }
   }
