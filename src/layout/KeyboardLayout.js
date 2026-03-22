@@ -37,12 +37,14 @@ export function computeGrid(config = {}) {
   const scaleIntervals = SCALES[scale] || SCALES.chromatic
   const scaleSet = new Set(scaleIntervals.map(i => (i + scaleRoot) % 12))
 
+  const effectiveRowOffset = Math.min(rowOffset, cols * colOffset)
+
   const grid = []
   for (let row = 0; row < rows; row++) {
     grid[row] = []
     const rowFromBottom = rows - 1 - row
     for (let col = 0; col < cols; col++) {
-      const note = rootNote + rowFromBottom * rowOffset + col * colOffset
+      const note = rootNote + rowFromBottom * effectiveRowOffset + col * colOffset
       if (note < 0 || note > 127) {
         grid[row][col] = null
         continue
