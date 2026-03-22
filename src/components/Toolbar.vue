@@ -16,7 +16,7 @@
     ></span>
 
     <button class="toolbar-btn" @click="menuOpen = !menuOpen">
-      Menu
+      MIDI
     </button>
 
     <button
@@ -46,19 +46,6 @@
           </select>
         </label>
 
-        <label class="menu-label">
-          Layout
-          <select
-            :value="settings.preset"
-            @change="$emit('preset-change', $event.target.value); menuOpen = false"
-          >
-            <option v-for="(preset, key) in presets" :key="key" :value="key">
-              {{ preset.label }}
-            </option>
-            <option value="custom">Custom</option>
-          </select>
-        </label>
-
         <button class="menu-btn panic" @click="$emit('panic'); menuOpen = false">
           Panic (All Notes Off)
         </button>
@@ -68,8 +55,6 @@
 </template>
 
 <script>
-import { PRESETS } from '../layout/KeyboardLayout.js'
-
 export default {
   name: 'Toolbar',
 
@@ -80,12 +65,11 @@ export default {
     settingsOpen: { type: Boolean, default: false }
   },
 
-  emits: ['select-output', 'toggle-settings', 'octave-up', 'octave-down', 'preset-change', 'panic'],
+  emits: ['select-output', 'toggle-settings', 'octave-up', 'octave-down', 'panic'],
 
   data() {
     return {
-      menuOpen: false,
-      presets: PRESETS
+      menuOpen: false
     }
   },
 
