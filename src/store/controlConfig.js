@@ -2,10 +2,9 @@ const STORAGE_KEY = 'touchmpe-controls'
 
 const DEFAULTS = {
   dockSide: 'right',
-  panelSize: 200,
+  panelSize: 30,
   visible: false,
   cellSize: 60,
-  gridCols: 6,
   controls: []
 }
 
@@ -16,7 +15,14 @@ export function loadControlConfig() {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
+      // Remove stale keys from old config versions
+      delete parsed.panelX
+      delete parsed.panelY
+      delete parsed.panelW
+      delete parsed.panelH
+      delete parsed.gridCols
       const config = { ...DEFAULTS, ...parsed }
+      if (config.panelSize > 80) config.panelSize = 30
       // Restore nextId from existing controls
       for (const ctrl of config.controls) {
         const num = parseInt(ctrl.id?.replace('ctrl-', ''), 10)

@@ -1,30 +1,37 @@
 <template>
   <div
     class="control-panel"
-    :class="['dock-' + config.dockSide]"
+    :class="['dock-' + config.dockSide, { 'is-layout-mode': layoutMode, 'is-dragging': dragging }]"
     :style="panelStyle"
   >
-    <div class="panel-resize-handle" @pointerdown.prevent="startResize"></div>
+    <!-- Layout mode overlay -->
+    <div v-if="layoutMode" class="layout-overlay">
+      <div class="layout-drag-area"
+        @pointerdown.prevent="startDragSnap"
+        @touchstart.prevent>
+        <div class="layout-overlay-text">
+          Drag to snap
+          <button class="layout-done-btn" @pointerdown.stop @touchstart.stop @click.stop="layoutMode = false">Done</button>
+        </div>
+      </div>
+      <div class="layout-resize-edge"
+        @pointerdown.prevent="startEdgeResize"
+        @touchstart.prevent></div>
+    </div>
 
     <div class="panel-toolbar">
       <div class="panel-toolbar-slider">
         <input type="range" :value="config.cellSize" min="30" max="120" step="5"
           @input="updateCellSize(+$event.target.value)" title="Zoom" />
       </div>
-      <div class="panel-toolbar-docks">
-        <button :class="{ active: config.dockSide === 'left' }" @click="setDockSide('left')" title="Dock left">
-          <svg viewBox="0 0 20 20"><rect x="1" y="2" width="6" height="16" rx="1" fill="currentColor"/><rect x="9" y="2" width="10" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-        </button>
-        <button :class="{ active: config.dockSide === 'right' }" @click="setDockSide('right')" title="Dock right">
-          <svg viewBox="0 0 20 20"><rect x="13" y="2" width="6" height="16" rx="1" fill="currentColor"/><rect x="1" y="2" width="10" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-        </button>
-        <button :class="{ active: config.dockSide === 'top' }" @click="setDockSide('top')" title="Dock top">
-          <svg viewBox="0 0 20 20"><rect x="2" y="1" width="16" height="6" rx="1" fill="currentColor"/><rect x="2" y="9" width="16" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-        </button>
-        <button :class="{ active: config.dockSide === 'bottom' }" @click="setDockSide('bottom')" title="Dock bottom">
-          <svg viewBox="0 0 20 20"><rect x="2" y="13" width="16" height="6" rx="1" fill="currentColor"/><rect x="2" y="1" width="16" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-        </button>
-      </div>
+      <button
+        class="layout-toggle"
+        :class="{ active: layoutMode }"
+        @click.stop="layoutMode = !layoutMode"
+        title="Move/resize panel"
+      >
+        <svg viewBox="0 0 20 20"><path d="M3 3h4v4H3zM3 13h4v4H3zM13 3h4v4h-4zM13 13h4v4h-4z" fill="currentColor"/><path d="M10 1v18M1 10h18" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
     </div>
 
     <div
@@ -151,8 +158,8 @@ export default {
       controlValues: {},
       xyValues: {},
       activePointers: {},
-      resizing: false,
-      resizeStart: null
+      layoutMode: false,
+      dragging: false
     }
   },
 
@@ -179,13 +186,15 @@ export default {
 
   computed: {
     isHorizontal() {
-      return this.config.dockSide === 'left' || this.config.dockSide === 'right'
+      const s = this.config.dockSide
+      return s === 'left' || s === 'right'
     },
 
     panelStyle() {
+      const pct = Math.max(10, Math.min(80, this.config.panelSize)) + '%'
       return this.isHorizontal
-        ? { width: this.config.panelSize + 'px' }
-        : { height: this.config.panelSize + 'px' }
+        ? { width: pct }
+        : { height: pct }
     },
 
     sz() { return this.config.cellSize || 60 },
@@ -363,11 +372,6 @@ export default {
       }
     },
 
-    setDockSide(side) {
-      this.config.dockSide = side
-      // grid reflows automatically via reactive computed
-      this.saveConfig()
-    },
 
     // --- Grid pointer events ---
     onGridDown(e) {
@@ -532,29 +536,63 @@ export default {
       saveControlConfig(this.config)
     },
 
-    // --- Panel resize handle ---
-    startResize(e) {
-      this.resizing = true
-      this.resizeStart = { x: e.clientX, y: e.clientY, size: this.config.panelSize }
+    // --- Panel drag-to-snap ---
+    startDragSnap(e) {
+      if (e.target.closest('button')) return
+      this.dragging = true
+      const el = e.target.closest('.layout-drag-area')
+      if (el) el.setPointerCapture(e.pointerId)
       const onMove = (e) => {
-        if (!this.resizing) return
-        const side = this.config.dockSide
-        let delta
-        if (side === 'right') delta = this.resizeStart.x - e.clientX
-        else if (side === 'left') delta = e.clientX - this.resizeStart.x
-        else if (side === 'bottom') delta = this.resizeStart.y - e.clientY
-        else delta = e.clientY - this.resizeStart.y
-        this.config.panelSize = Math.max(100, Math.min(500, this.resizeStart.size + delta))
-        // grid reflows automatically via reactive computed
+        const x = e.clientX
+        const y = e.clientY
+        const w = window.innerWidth
+        const h = window.innerHeight
+        const dists = { left: x, right: w - x, top: y, bottom: h - y }
+        const closest = Object.keys(dists).reduce((a, b) => dists[a] < dists[b] ? a : b)
+        if (this.config.dockSide !== closest) {
+          this.config.dockSide = closest
+        }
       }
       const onUp = () => {
-        this.resizing = false
+        this.dragging = false
         this.saveConfig()
-        document.removeEventListener('pointermove', onMove)
-        document.removeEventListener('pointerup', onUp)
+        if (el) el.releasePointerCapture(e.pointerId)
+        el?.removeEventListener('pointermove', onMove)
+        el?.removeEventListener('pointerup', onUp)
       }
-      document.addEventListener('pointermove', onMove)
-      document.addEventListener('pointerup', onUp)
+      el?.addEventListener('pointermove', onMove)
+      el?.addEventListener('pointerup', onUp)
+    },
+
+    // --- Panel inner edge resize (percentage) ---
+    startEdgeResize(e) {
+      const parent = this.$el.parentElement
+      if (!parent) return
+      const edge = e.target
+      edge.setPointerCapture(e.pointerId)
+      const startX = e.clientX
+      const startY = e.clientY
+      const startPct = this.config.panelSize
+      const parentRect = parent.getBoundingClientRect()
+      const onMove = (e) => {
+        const dx = e.clientX - startX
+        const dy = e.clientY - startY
+        let deltaPct
+        const side = this.config.dockSide
+        if (side === 'right') deltaPct = -dx / parentRect.width * 100
+        else if (side === 'left') deltaPct = dx / parentRect.width * 100
+        else if (side === 'bottom') deltaPct = -dy / parentRect.height * 100
+        else deltaPct = dy / parentRect.height * 100
+        this.config.panelSize = Math.max(10, Math.min(80, startPct + deltaPct))
+      }
+      const onUp = () => {
+        this.saveConfig()
+        edge.releasePointerCapture(e.pointerId)
+        edge.removeEventListener('pointermove', onMove)
+        edge.removeEventListener('pointerup', onUp)
+      }
+      edge.addEventListener('pointermove', onMove)
+      edge.addEventListener('pointerup', onUp)
     },
 
     // --- Control interaction (play mode) ---
@@ -680,68 +718,119 @@ export default {
     min-width: 16px
     text-align: center
 
-.panel-toolbar-docks
+.layout-toggle
+  width: 28px
+  height: 28px
+  padding: 4px
+  background: #333
+  border: 1px solid #444
+  border-radius: 4px
+  color: #888
+  cursor: pointer
   display: flex
-  gap: 2px
+  align-items: center
+  justify-content: center
+  flex-shrink: 0
 
-  button
-    width: 28px
-    height: 28px
-    padding: 4px
-    background: #333
-    border: 1px solid #444
-    border-radius: 4px
-    color: #888
-    cursor: pointer
-    display: flex
-    align-items: center
-    justify-content: center
+  &:hover
+    background: #444
+    color: #ccc
 
-    &:hover
-      background: #444
-      color: #ccc
+  &.active
+    background: #ff8800
+    color: #000
+    border-color: #ff8800
 
-    &.active
-      background: #ff8800
-      color: #000
-      border-color: #ff8800
+  svg
+    width: 16px
+    height: 16px
 
-    svg
-      width: 16px
-      height: 16px
-
-.panel-resize-handle
+.layout-overlay
   position: absolute
-  z-index: 10
-  background: #444
+  inset: 0
+  z-index: 30
+  display: flex
 
-  .dock-left &
-    right: 0
-    top: 0
-    width: 4px
-    height: 100%
-    cursor: ew-resize
+  .dock-left &, .dock-right &
+    flex-direction: row
+
+  .dock-top &, .dock-bottom &
+    flex-direction: column
 
   .dock-right &
-    left: 0
-    top: 0
-    width: 4px
-    height: 100%
-    cursor: ew-resize
-
-  .dock-top &
-    bottom: 0
-    left: 0
-    height: 4px
-    width: 100%
-    cursor: ns-resize
+    flex-direction: row-reverse
 
   .dock-bottom &
-    top: 0
-    left: 0
-    height: 4px
-    width: 100%
+    flex-direction: column-reverse
+
+.layout-drag-area
+  flex: 1
+  background: rgba(255, 136, 0, 0.12)
+  backdrop-filter: blur(4px)
+  border: 3px dashed #ff8800
+  cursor: grab
+  display: flex
+  align-items: center
+  justify-content: center
+
+  .is-dragging &
+    cursor: grabbing
+    background: rgba(255, 136, 0, 0.25)
+
+.layout-overlay-text
+  font-size: 16px
+  font-weight: 600
+  color: #ff8800
+  text-transform: uppercase
+  letter-spacing: 2px
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6)
+  display: flex
+  flex-direction: column
+  align-items: center
+  gap: 12px
+  pointer-events: none
+
+.layout-done-btn
+  pointer-events: auto
+  background: #ff8800
+  color: #000
+  border: none
+  border-radius: 6px
+  padding: 8px 24px
+  font-size: 14px
+  font-weight: 600
+  cursor: pointer
+
+.layout-resize-edge
+  background: #2a2a2a
+  border: 2px dotted #ff8800
+  display: flex
+  align-items: center
+  justify-content: center
+  flex-shrink: 0
+
+  &::after
+    content: ''
+    border-radius: 2px
+    background: #ff8800
+    opacity: 0.6
+
+  .dock-right &, .dock-left &
+    width: 18px
+    cursor: ew-resize
+    flex-direction: column
+
+    &::after
+      width: 3px
+      height: 32px
+
+  .dock-top &, .dock-bottom &
+    height: 18px
     cursor: ns-resize
+
+    &::after
+      height: 3px
+      width: 32px
 
 .panel-grid
   flex: 1

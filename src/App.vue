@@ -14,18 +14,18 @@
       @panic="onPanic"
       @toggle-controls="toggleControlPanel"
     />
-    <div class="main-area" :class="'dock-' + controlConfig.dockSide">
-      <ControlPanel
-        v-if="controlConfig.visible"
-        :config="controlConfig"
-        :engine="engine"
-        @update="onControlConfigUpdate"
-      />
+    <div class="main-area" :class="'dock-' + controlConfig.dockSide" :data-cc-visible="controlConfig.visible">
       <GridCanvas
         ref="gridCanvas"
         :settings="settings"
         :midi-output="midiOutput"
         @engine-ready="onEngineReady"
+      />
+      <ControlPanel
+        v-if="controlConfig.visible"
+        :config="controlConfig"
+        :engine="engine"
+        @update="onControlConfigUpdate"
       />
     </div>
     <SettingsPanel
@@ -176,15 +176,15 @@ html, body
   flex: 1
   min-height: 0
 
-  &.dock-left, &.dock-right
-    flex-direction: row
-
-  &.dock-top, &.dock-bottom
-    flex-direction: column
-
-  &.dock-right
+  &.dock-left
     flex-direction: row-reverse
 
-  &.dock-bottom
+  &.dock-right
+    flex-direction: row
+
+  &.dock-top
     flex-direction: column-reverse
+
+  &.dock-bottom
+    flex-direction: column
 </style>
