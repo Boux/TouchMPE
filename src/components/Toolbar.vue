@@ -52,11 +52,9 @@
             :value="settings.preset"
             @change="$emit('preset-change', $event.target.value); menuOpen = false"
           >
-            <option value="chromatic">Chromatic</option>
-            <option value="guitar">Guitar</option>
-            <option value="thirds">Thirds</option>
-            <option value="fifths">Fifths</option>
-            <option value="wickiHayden">Wicki-Hayden</option>
+            <option v-for="(preset, key) in presets" :key="key" :value="key">
+              {{ preset.label }}
+            </option>
             <option value="custom">Custom</option>
           </select>
         </label>
@@ -70,6 +68,8 @@
 </template>
 
 <script>
+import { PRESETS } from '../layout/KeyboardLayout.js'
+
 export default {
   name: 'Toolbar',
 
@@ -84,7 +84,8 @@ export default {
 
   data() {
     return {
-      menuOpen: false
+      menuOpen: false,
+      presets: PRESETS
     }
   },
 

@@ -12,28 +12,21 @@
         <label>
           Preset
           <select :value="settings.preset" @change="applyPreset($event.target.value)">
-            <option value="chromatic">Chromatic</option>
-            <option value="guitar">Guitar</option>
-            <option value="thirds">Thirds</option>
-            <option value="fifths">Fifths</option>
-            <option value="wickiHayden">Wicki-Hayden</option>
+            <option v-for="(preset, key) in presets" :key="key" :value="key">
+              {{ preset.label }}
+            </option>
             <option value="custom">Custom</option>
           </select>
         </label>
 
         <label>
-          Columns
-          <input type="number" :value="settings.cols" min="4" max="20"
-            @change="update('cols', +$event.target.value)" />
+          Pad Size
+          <div class="slider-group">
+            <input type="range" :value="settings.padScale" min="0.5" max="2.0" step="0.05"
+              @input="update('padScale', +$event.target.value)" />
+            <span class="slider-value">{{ (settings.padScale || 1).toFixed(2) }}x</span>
+          </div>
         </label>
-
-        <label>
-          Rows
-          <input type="number" :value="settings.rows" min="2" max="10"
-            @change="update('rows', +$event.target.value)" />
-        </label>
-
-        <button class="menu-btn" @click="autoDetectSize">Auto-detect grid size</button>
 
         <label>
           Root Note
@@ -152,7 +145,8 @@ export default {
 
   data() {
     return {
-      noteNames: NOTE_NAMES
+      noteNames: NOTE_NAMES,
+      presets: PRESETS
     }
   },
 
@@ -175,15 +169,6 @@ export default {
       const midi = (octave + 1) * 12 + pitchClass
       const clamped = Math.max(0, Math.min(127, midi))
       this.$emit('update', { ...this.settings, rootNote: clamped, preset: 'custom' })
-    },
-
-    autoDetectSize() {
-      const w = window.innerWidth
-      const h = window.innerHeight - 36
-      const target = 70
-      const cols = Math.max(4, Math.min(16, Math.round(w / target)))
-      const rows = Math.max(2, Math.min(8, Math.round(h / target)))
-      this.$emit('update', { ...this.settings, cols, rows })
     },
 
     applyPreset(presetName) {
@@ -288,4 +273,18 @@ export default {
   .unit
     font-size: 11px
     color: #666
+
+.slider-group
+  display: flex
+  align-items: center
+  gap: 6px
+
+  input[type="range"]
+    width: 90px
+    accent-color: #ff8800
+
+  .slider-value
+    font-size: 11px
+    color: #888
+    min-width: 36px
 </style>

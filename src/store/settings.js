@@ -1,59 +1,88 @@
 const STORAGE_KEY = 'touchmpe-settings'
 
-/**
- * Auto-detect reasonable grid dimensions based on screen size.
- * Aims for pads that are ~60-80px wide (comfortable finger target).
- */
-function autoDetectGrid() {
-  const w = window.innerWidth
-  const h = window.innerHeight - 36 // subtract toolbar height
-  const targetPadSize = 70 // ideal pad size in px
+const BASE_PAD_SIZE = 65 // base target pad size in px at scale 1.0
 
-  const cols = Math.max(4, Math.min(16, Math.round(w / targetPadSize)))
-  const rows = Math.max(2, Math.min(8, Math.round(h / targetPadSize)))
+const DEFAULTS = {
+  // Layout
+  preset: 'chromatic',
+  padScale: 1.0, // 0.5 = small pads, 2.0 = large pads
+  rootNote: 36,
+  rowOffset: 5,
+  colOffset: 1,
+  scale: 'chromatic',
+  scaleRoot: 0,
+
+  // MPE
+  pitchBendRange: 48,
+  memberChannels: 15,
+
+  // Touch
+  noteOnQuantize: true,
+  slidePitchQuantize: false,
+  pressureMode: 'auto'
+}
+
+/**
+ * Calculate cols/rows from screen size and padScale.
+ * Returns near-square pads that fill the screen, with slight
+ * elasticity on aspect ratio (up to ~1.3:1) to avoid dead space.
+ */
+export function calcGrid(padScale, canvasEl = null, gap = 3) {
+  let w, h
+  if (canvasEl) {
+    const rect = canvasEl.getBoundingClientRect()
+    w = rect.width
+    h = rect.height
+  } else {
+    w = window.innerWidth
+    h = window.innerHeight - 36
+  }
+
+  const target = BASE_PAD_SIZE * padScale
+
+  // Start with floor to never exceed available space
+  let cols = Math.max(3, Math.floor((w + gap) / (target + gap)))
+  let rows = Math.max(2, Math.floor((h + gap) / (target + gap)))
+
+  // Iteratively adjust to keep pads near-square (ratio between 0.7 and 1.4)
+  for (let i = 0; i < 3; i++) {
+    const padW = (w - (cols + 1) * gap) / cols
+    const padH = (h - (rows + 1) * gap) / rows
+    const ratio = padW / padH
+
+    if (ratio > 1.4 && cols < 30) {
+      cols++
+    } else if (ratio < 0.7 && rows > 2) {
+      rows--
+    } else {
+      break
+    }
+  }
+
   return { cols, rows }
 }
 
-function buildDefaults() {
-  const { cols, rows } = autoDetectGrid()
-  return {
-    // Layout
-    preset: 'chromatic',
-    cols,
-    rows,
-    rootNote: 36,
-    rowOffset: 5,
-    colOffset: 1,
-    scale: 'chromatic',
-    scaleRoot: 0,
-
-    // MPE
-    pitchBendRange: 48,
-    memberChannels: 15,
-
-    // Touch
-    noteOnQuantize: true,
-    slidePitchQuantize: false,
-    pressureMode: 'auto'
-  }
-}
-
 export function loadSettings() {
-  const defaults = buildDefaults()
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
-      return { ...defaults, ...JSON.parse(stored) }
+      const parsed = JSON.parse(stored)
+      // Remove legacy cols/rows if present
+      delete parsed.cols
+      delete parsed.rows
+      return { ...DEFAULTS, ...parsed }
     }
   } catch (e) {
     // ignore
   }
-  return defaults
+  return { ...DEFAULTS }
 }
 
 export function saveSettings(settings) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+    // Don't persist cols/rows — they're always computed
+    const { cols, rows, ...rest } = settings
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rest))
   } catch (e) {
     // ignore
   }

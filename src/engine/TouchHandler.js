@@ -119,8 +119,6 @@ export default class TouchHandler {
       col: hit.col,
       padCenterX: hit.centerX,
       padCenterY: hit.centerY,
-      padWidth: hit.width,
-      padHeight: hit.height,
       padSpacing,
       rowSpacing,
       currentX: pos.x,

@@ -7,6 +7,7 @@ import GridRenderer from '../engine/GridRenderer.js'
 import TouchHandler from '../engine/TouchHandler.js'
 import MPEEngine from '../engine/MPEEngine.js'
 import { computeGrid } from '../layout/KeyboardLayout.js'
+import { calcGrid } from '../store/settings.js'
 
 export default {
   name: 'GridCanvas',
@@ -23,12 +24,14 @@ export default {
       renderer: null,
       touchHandler: null,
       engine: null,
-      animFrameId: null
+      animFrameId: null,
+      resizeTimeout: null
     }
   },
 
   mounted() {
     this.renderer = new GridRenderer(this.$refs.canvas)
+    this.renderer.onResize = () => this._onGridResize()
     this.engine = new MPEEngine(this.midiOutput)
     this.touchHandler = new TouchHandler(this.$refs.canvas, this.engine, this.renderer)
     this.$emit('engine-ready', this.engine)
@@ -40,13 +43,15 @@ export default {
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId)
     if (this.touchHandler) this.touchHandler.destroy()
     if (this.renderer) this.renderer.destroy()
+    if (this.resizeTimeout) clearTimeout(this.resizeTimeout)
   },
 
   methods: {
     applySettings(settings) {
+      const { cols, rows } = calcGrid(settings.padScale || 1.0, this.$refs.canvas)
       const grid = computeGrid({
-        cols: settings.cols,
-        rows: settings.rows,
+        cols,
+        rows,
         rootNote: settings.rootNote,
         rowOffset: settings.rowOffset,
         colOffset: settings.colOffset,
@@ -60,6 +65,14 @@ export default {
       if (this.touchHandler) {
         this.touchHandler.applySettings(settings)
       }
+    },
+
+    _onGridResize() {
+      // Debounce rapid resize events, but recalculate grid dimensions
+      if (this.resizeTimeout) clearTimeout(this.resizeTimeout)
+      this.resizeTimeout = setTimeout(() => {
+        this.applySettings(this.settings)
+      }, 100)
     },
 
     _startRenderLoop() {
@@ -78,5 +91,6 @@ export default {
 .grid-canvas
   flex: 1
   width: 100%
+  min-height: 0
   display: block
 </style>

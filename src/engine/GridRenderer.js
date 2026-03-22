@@ -26,6 +26,7 @@ export default class GridRenderer {
     this.touchState = []
     this.hasActiveTouches = false
     this.dynamicDirty = true
+    this.onResize = null
 
     this._resizeObserver = new ResizeObserver(() => this._onResize())
     this._resizeObserver.observe(canvas)
@@ -271,9 +272,14 @@ export default class GridRenderer {
     this.dpr = window.devicePixelRatio || 1
     this.canvas.width = rect.width * this.dpr
     this.canvas.height = rect.height * this.dpr
+    // Only update pad positions within the current grid —
+    // the grid dimensions (cols/rows) are recalculated by Vue on resize
     this._computePadGeometry()
     this.staticDirty = true
     this.dynamicDirty = true
+
+    // Notify listener so Vue can recalculate grid dimensions
+    if (this.onResize) this.onResize()
   }
 
   _computePadGeometry() {

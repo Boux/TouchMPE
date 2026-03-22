@@ -5,11 +5,6 @@ export function noteNameShort(midiNote) {
   return NOTE_NAMES[midiNote % 12]
 }
 
-export function noteNameFull(midiNote) {
-  const octave = Math.floor(midiNote / 12) - 1
-  return NOTE_NAMES[midiNote % 12] + octave
-}
-
 export function isBlackKey(midiNote) {
   return BLACK_KEY_SET.has(midiNote % 12)
 }
