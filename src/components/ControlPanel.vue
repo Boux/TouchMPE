@@ -269,8 +269,10 @@ export default {
       if (!canvas || !anchor) return
       const rect = canvas.getBoundingClientRect()
       const step = (this.config.cellSize || 60) + 2
-      anchor.style.left = (rect.left + cell.col * step - this.panX + step / 2) + 'px'
-      anchor.style.top = (rect.top + cell.row * step - this.panY + step / 2) + 'px'
+      anchor.style.left = (rect.left + cell.col * step - this.panX) + 'px'
+      anchor.style.top = (rect.top + cell.row * step - this.panY) + 'px'
+      anchor.style.width = (step - 2) + 'px'
+      anchor.style.height = (step - 2) + 'px'
     },
 
     positionAnchorAtCtrl(ctrl) {
@@ -279,10 +281,10 @@ export default {
       if (!canvas || !anchor || !ctrl) return
       const rect = canvas.getBoundingClientRect()
       const step = (this.config.cellSize || 60) + 2
-      const cx = rect.left + ctrl.col * step - this.panX + (ctrl.colSpan * step) / 2
-      const cy = rect.top + ctrl.row * step - this.panY + (ctrl.rowSpan * step) / 2
-      anchor.style.left = cx + 'px'
-      anchor.style.top = cy + 'px'
+      anchor.style.left = (rect.left + ctrl.col * step - this.panX) + 'px'
+      anchor.style.top = (rect.top + ctrl.row * step - this.panY) + 'px'
+      anchor.style.width = (ctrl.colSpan * step - 2) + 'px'
+      anchor.style.height = (ctrl.rowSpan * step - 2) + 'px'
     },
 
     positionFloating(refName) {
