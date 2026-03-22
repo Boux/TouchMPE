@@ -28,7 +28,7 @@
       <button
         class="layout-toggle"
         :class="{ active: locked }"
-        @click.stop="locked = !locked; if (locked) { layoutMode = false; selectedCtrl = null }"
+        @click.stop="toggleLock"
         title="Lock panel"
       >
         <svg v-if="locked" viewBox="0 0 20 20"><rect x="3" y="9" width="14" height="9" rx="2" fill="currentColor"/><path d="M6 9V6a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
@@ -45,70 +45,10 @@
       </button>
     </div>
 
-    <div
-      ref="grid"
-      class="panel-grid"
-      :class="{ selecting: selectedCtrl, locked: locked }"
-      @pointerdown="onGridDown"
-      @pointermove="onGridMove"
-      @pointerup="onGridUp"
-      @pointercancel="onGridUp"
-      @contextmenu.prevent="onGridContext"
-    >
-      <div class="grid-inner" :style="gridInnerStyle">
-        <!-- Empty cells -->
-        <div
-          v-for="cell in emptyCells"
-          :key="'e-' + cell.col + '-' + cell.row"
-          :ref="'cell-' + cell.col + '-' + cell.row"
-          class="grid-cell"
-          :class="{ highlight: isCellInDrag(cell.col, cell.row) }"
-          :style="cellAbsStyle(cell, 1, 1)"
-        ></div>
+    <canvas ref="gridCanvas" class="grid-canvas"></canvas>
 
-        <!-- Controls -->
-        <div
-          v-for="ctrl in config.controls"
-          :key="ctrl.id"
-          :ref="'ctrl-' + ctrl.id"
-          class="grid-control"
-          :class="[
-            'type-' + ctrl.type,
-            { 'is-active': activePointers[ctrl.id], 'is-selected': selectedCtrl === ctrl.id }
-          ]"
-          :style="cellAbsStyle(ctrl, ctrl.colSpan, ctrl.rowSpan)"
-          @pointerdown.stop.prevent="onControlDown($event, ctrl)"
-          @pointermove.prevent="onControlMove($event, ctrl)"
-          @pointerup.prevent="onControlUp($event, ctrl)"
-          @pointercancel.prevent="onControlUp($event, ctrl)"
-          @contextmenu.stop.prevent="openConfig(ctrl)"
-        >
-        <div class="control-label">{{ ctrl.label || ccLabel(ctrl.cc) }}</div>
-        <div class="control-value">{{ Math.round(controlValues[ctrl.id] ?? 0) }}</div>
-
-        <svg v-if="ctrl.type === 'knob'" class="knob-svg" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="38" fill="none" stroke="#444" stroke-width="6"
-            stroke-dasharray="200" stroke-dashoffset="40"
-            transform="rotate(130 50 50)" stroke-linecap="round" />
-          <circle cx="50" cy="50" r="38" fill="none" stroke="#ff8800" stroke-width="6"
-            :stroke-dasharray="knobArc(ctrl)" stroke-dashoffset="40"
-            transform="rotate(130 50 50)" stroke-linecap="round" />
-        </svg>
-
-        <div v-if="ctrl.type === 'fader'" class="fader-track"
-          :class="ctrl.colSpan > ctrl.rowSpan ? 'horizontal' : 'vertical'">
-          <div class="fader-fill" :style="faderFillStyle(ctrl)"></div>
-        </div>
-
-        <div v-if="ctrl.type === 'xypad'" class="xypad-area">
-          <div class="xypad-dot" :style="xyDotStyle(ctrl)"></div>
-        </div>
-
-        <div v-if="ctrl.type === 'button' || ctrl.type === 'toggle'" class="btn-indicator"
-          :class="{ on: (controlValues[ctrl.id] ?? 0) > 0 }"></div>
-      </div>
-      </div>
-    </div>
+    <!-- Popup anchor (positioned over canvas for Floating UI) -->
+    <div ref="popupAnchor" class="popup-anchor"></div>
 
     <!-- Add control popup -->
     <div v-if="popup" ref="addPopup" class="floating-popup"
@@ -128,15 +68,15 @@
       @pointerdown="startPopupDrag($event, 'configPopup')">
       <label>
         Label
-        <input type="text" v-model="selectedControl.label" @input="saveConfig" />
+        <input type="text" v-model="selectedControl.label" @input="saveConfig; markDirty()" />
       </label>
       <label>
         CC Number
-        <input type="number" v-model.number="selectedControl.cc" min="0" max="127" @input="saveConfig" />
+        <input type="number" v-model.number="selectedControl.cc" min="0" max="127" @input="saveConfig; markDirty()" />
       </label>
       <label v-if="selectedControl.type === 'xypad'">
         CC Y-Axis
-        <input type="number" v-model.number="selectedControl.cc2" min="0" max="127" @input="saveConfig" />
+        <input type="number" v-model.number="selectedControl.cc2" min="0" max="127" @input="saveConfig; markDirty()" />
       </label>
       <button class="delete-config-btn" @click="deleteControl(selectedControl.id)">
         Delete Control
@@ -148,6 +88,8 @@
 <script>
 import { computePosition, autoPlacement, shift } from '@floating-ui/dom'
 import { generateId, saveControlConfig } from '../store/controlConfig.js'
+import ControlGridRenderer from '../engine/ControlGridRenderer.js'
+import ControlGridInput from '../engine/ControlGridInput.js'
 
 export default {
   name: 'ControlPanel',
@@ -168,32 +110,12 @@ export default {
       dragEnd: null,
       controlValues: {},
       xyValues: {},
-      activePointers: {},
       layoutMode: false,
       locked: false,
-      dragging: false
+      dragging: false,
+      panX: 0,
+      panY: 0
     }
-  },
-
-  mounted() {
-    this._onDocClick = (e) => {
-      if (this.popup && this.$refs.addPopup && !this.$refs.addPopup.contains(e.target)) {
-        this.popup = null
-      }
-      // Deselect if clicking outside both the popup and the panel grid
-      if (this.selectedCtrl) {
-        const inPopup = this.$refs.configPopup && this.$refs.configPopup.contains(e.target)
-        const inGrid = this.$refs.grid && this.$refs.grid.contains(e.target)
-        if (!inPopup && !inGrid) {
-          this.selectedCtrl = null
-        }
-      }
-    }
-    document.addEventListener('pointerdown', this._onDocClick, true)
-  },
-
-  beforeUnmount() {
-    document.removeEventListener('pointerdown', this._onDocClick, true)
   },
 
   computed: {
@@ -204,36 +126,7 @@ export default {
 
     panelStyle() {
       const pct = Math.max(10, Math.min(80, this.config.panelSize)) + '%'
-      return this.isHorizontal
-        ? { width: pct }
-        : { height: pct }
-    },
-
-    sz() { return this.config.cellSize || 60 },
-    gap() { return 2 },
-
-    gridBounds() {
-      let minC = 0, minR = 0, maxC = 0, maxR = 0
-      for (const ctrl of this.config.controls) {
-        minC = Math.min(minC, ctrl.col)
-        minR = Math.min(minR, ctrl.row)
-        maxC = Math.max(maxC, ctrl.col + ctrl.colSpan)
-        maxR = Math.max(maxR, ctrl.row + ctrl.rowSpan)
-      }
-      const pad = 5
-      return {
-        minCol: minC - pad, minRow: minR - pad,
-        maxCol: maxC + pad, maxRow: maxR + pad
-      }
-    },
-
-    gridInnerStyle() {
-      const b = this.gridBounds
-      const step = this.sz + this.gap
-      return {
-        width: (b.maxCol - b.minCol) * step + 'px',
-        height: (b.maxRow - b.minRow) * step + 'px'
-      }
+      return this.isHorizontal ? { width: pct } : { height: pct }
     },
 
     occupiedSet() {
@@ -248,83 +141,169 @@ export default {
       return s
     },
 
-    emptyCells() {
-      const b = this.gridBounds
-      const cells = []
-      for (let row = b.minRow; row < b.maxRow; row++) {
-        for (let col = b.minCol; col < b.maxCol; col++) {
-          if (!this.occupiedSet.has(col + ',' + row)) {
-            cells.push({ col, row })
-          }
-        }
-      }
-      return cells
-    },
-
     selectedControl() {
       if (!this.selectedCtrl) return null
       return this.config.controls.find(c => c.id === this.selectedCtrl) || null
     }
   },
 
-  methods: {
-    updateCellSize(val) {
-      this.config.cellSize = val
-      this.saveConfig()
-    },
+  mounted() {
+    this.renderer = new ControlGridRenderer(this.$refs.gridCanvas)
+    this.input = new ControlGridInput(this.$refs.gridCanvas, {
+      onValueChange: (ctrl, val, valY) => {
+        this.controlValues[ctrl.id] = val
+        if (valY !== undefined) this.xyValues[ctrl.id] = valY
+        this.sendValue(ctrl)
+        this.markDirty()
+      },
+      onContext: (cell, e) => {
+        if (!this.occupiedSet.has(cell.col + ',' + cell.row)) {
+          this.popupCell = cell
+          this.popup = true
+          this.selectedCtrl = null
+          this.positionAnchorAtCell(cell)
+          this.$nextTick(() => this.positionFloating('addPopup'))
+        }
+      },
+      onSelect: (id) => {
+        this.selectedCtrl = id
+        this.repositionConfigPopup()
+      },
+      onDeselect: () => {
+        this.selectedCtrl = null
+      },
+      onDragResize: (from, to) => {
+        this.dragStart = from
+        this.dragEnd = to
+        this.markDirty()
+      },
+      onDragResizeEnd: (from, to) => {
+        this.finishDragResize(from, to)
+        this.dragStart = null
+        this.dragEnd = null
+        this.markDirty()
+      },
+      onPanChange: (px, py) => {
+        this.panX = px
+        this.panY = py
+        this.markDirty()
+      },
+      getValue: (id) => this.controlValues[id] ?? 0
+    })
+    this.input.cellSize = this.config.cellSize || 60
+    this.input.controls = this.config.controls
+    this.input.locked = this.locked
 
-    cellFromEvent(e) {
-      const grid = this.$refs.grid
-      if (!grid) return null
-      const b = this.gridBounds
-      const step = this.sz + this.gap
-
-      const x = e.clientX - grid.getBoundingClientRect().left + grid.scrollLeft
-      const y = e.clientY - grid.getBoundingClientRect().top + grid.scrollTop
-      const col = Math.floor(x / step) + b.minCol
-      const row = Math.floor(y / step) + b.minRow
-      return { col, row }
-    },
-
-    cellAbsStyle(item, colSpan, rowSpan) {
-      const b = this.gridBounds
-      const step = this.sz + this.gap
-      return {
-        position: 'absolute',
-        left: (item.col - b.minCol) * step + 'px',
-        top: (item.row - b.minRow) * step + 'px',
-        width: colSpan * step - this.gap + 'px',
-        height: rowSpan * step - this.gap + 'px'
+    this._onDocClick = (e) => {
+      if (this.popup && this.$refs.addPopup && !this.$refs.addPopup.contains(e.target)) {
+        this.popup = null
       }
+      if (this.selectedCtrl) {
+        const inPopup = this.$refs.configPopup && this.$refs.configPopup.contains(e.target)
+        const inCanvas = this.$refs.gridCanvas && this.$refs.gridCanvas.contains(e.target)
+        if (!inPopup && !inCanvas) {
+          this.selectedCtrl = null
+          this.markDirty()
+        }
+      }
+    }
+    document.addEventListener('pointerdown', this._onDocClick, true)
+
+    this._startRenderLoop()
+  },
+
+  beforeUnmount() {
+    if (this.renderer) this.renderer.destroy()
+    if (this.input) this.input.destroy()
+    if (this._animId) cancelAnimationFrame(this._animId)
+    document.removeEventListener('pointerdown', this._onDocClick, true)
+  },
+
+  watch: {
+    'config.cellSize'() {
+      if (this.input) this.input.cellSize = this.config.cellSize || 60
+      this.markDirty()
+    },
+    'config.controls'() {
+      if (this.input) this.input.controls = this.config.controls
+      this.markDirty()
+    },
+    locked() {
+      if (this.input) this.input.locked = this.locked
+    },
+    selectedCtrl() {
+      if (this.input) this.input.selectedCtrl = this.selectedCtrl
+      this.markDirty()
+    }
+  },
+
+  methods: {
+    markDirty() {
+      if (this.renderer) this.renderer.dirty = true
     },
 
-    knobArc(ctrl) {
-      const val = (this.controlValues[ctrl.id] ?? 0) / 127
-      return (val * 200) + ' 200'
+    _startRenderLoop() {
+      const loop = () => {
+        this.renderer.draw({
+          cellSize: this.config.cellSize || 60,
+          gap: 2,
+          panX: this.panX,
+          panY: this.panY,
+          controls: this.config.controls,
+          controlValues: this.controlValues,
+          xyValues: this.xyValues,
+          selectedCtrl: this.selectedCtrl,
+          dragStart: this.dragStart,
+          dragEnd: this.dragEnd,
+          occupiedSet: this.occupiedSet
+        })
+        this._animId = requestAnimationFrame(loop)
+      }
+      this._animId = requestAnimationFrame(loop)
     },
 
-    faderFillStyle(ctrl) {
-      const val = (this.controlValues[ctrl.id] ?? 0) / 127 * 100
-      return ctrl.colSpan > ctrl.rowSpan ? { width: val + '%' } : { height: val + '%' }
+    // --- Popup positioning ---
+    positionAnchorAtCell(cell) {
+      const canvas = this.$refs.gridCanvas
+      const anchor = this.$refs.popupAnchor
+      if (!canvas || !anchor) return
+      const rect = canvas.getBoundingClientRect()
+      const step = (this.config.cellSize || 60) + 2
+      anchor.style.left = (rect.left + cell.col * step - this.panX + step / 2) + 'px'
+      anchor.style.top = (rect.top + cell.row * step - this.panY + step / 2) + 'px'
     },
 
-    xyDotStyle(ctrl) {
-      const x = (this.controlValues[ctrl.id] ?? 64) / 127 * 100
-      const y = 100 - (this.xyValues[ctrl.id] ?? 64) / 127 * 100
-      return { left: x + '%', top: y + '%' }
+    positionAnchorAtCtrl(ctrl) {
+      const canvas = this.$refs.gridCanvas
+      const anchor = this.$refs.popupAnchor
+      if (!canvas || !anchor || !ctrl) return
+      const rect = canvas.getBoundingClientRect()
+      const step = (this.config.cellSize || 60) + 2
+      const cx = rect.left + ctrl.col * step - this.panX + (ctrl.colSpan * step) / 2
+      const cy = rect.top + ctrl.row * step - this.panY + (ctrl.rowSpan * step) / 2
+      anchor.style.left = cx + 'px'
+      anchor.style.top = cy + 'px'
     },
 
-    ccLabel(cc) { return 'CC' + (cc ?? 1) },
+    positionFloating(refName) {
+      this.$nextTick(() => {
+        const floating = this.$refs[refName]
+        const anchor = this.$refs.popupAnchor
+        if (!floating || !anchor) return
+        computePosition(anchor, floating, {
+          middleware: [autoPlacement(), shift({ padding: 8 })]
+        }).then(({ x, y }) => {
+          floating.style.left = x + 'px'
+          floating.style.top = y + 'px'
+        })
+      })
+    },
 
-    isCellOccupied(col, row) { return this.occupiedSet.has(col + ',' + row) },
-
-    isCellInDrag(col, row) {
-      if (!this.selectedCtrl || !this.dragStart || !this.dragEnd) return false
-      const c1 = Math.min(this.dragStart.col, this.dragEnd.col)
-      const c2 = Math.max(this.dragStart.col, this.dragEnd.col)
-      const r1 = Math.min(this.dragStart.row, this.dragEnd.row)
-      const r2 = Math.max(this.dragStart.row, this.dragEnd.row)
-      return col >= c1 && col <= c2 && row >= r1 && row <= r2
+    repositionConfigPopup() {
+      if (!this.selectedCtrl) return
+      const ctrl = this.config.controls.find(c => c.id === this.selectedCtrl)
+      if (ctrl) this.positionAnchorAtCtrl(ctrl)
+      this.$nextTick(() => this.positionFloating('configPopup'))
     },
 
     startPopupDrag(e, refName) {
@@ -348,93 +327,7 @@ export default {
       document.addEventListener('pointerup', onUp)
     },
 
-    repositionConfigPopup() {
-      if (!this.selectedCtrl) return
-      this.$nextTick(() => {
-        const refArr = this.$refs['ctrl-' + this.selectedCtrl]
-        const anchor = Array.isArray(refArr) ? refArr[0] : refArr
-        if (anchor) this.positionFloating(anchor, 'configPopup')
-      })
-    },
-
-    positionFloating(anchorEl, floatingRef) {
-      this.$nextTick(() => {
-        const floating = this.$refs[floatingRef]
-        if (!floating || !anchorEl) return
-        computePosition(anchorEl, floating, {
-          middleware: [autoPlacement(), shift({ padding: 8 })]
-        }).then(({ x, y }) => {
-          floating.style.left = x + 'px'
-          floating.style.top = y + 'px'
-        })
-      })
-    },
-
-    // --- Context menu (right click / long touch) ---
-    onGridContext(e) {
-      if (this.locked) return
-      const cell = this.cellFromEvent(e)
-      if (!cell) return
-      if (!this.isCellOccupied(cell.col, cell.row)) {
-        this.popupCell = cell
-        this.popup = true
-        this.selectedCtrl = null
-        const refArr = this.$refs['cell-' + cell.col + '-' + cell.row]
-        const anchor = Array.isArray(refArr) ? refArr[0] : refArr
-        if (anchor) this.positionFloating(anchor, 'addPopup')
-      }
-    },
-
-
-    // --- Grid pointer events ---
-    onGridDown(e) {
-      const cell = this.cellFromEvent(e)
-      if (!cell) return
-
-      if (this.selectedCtrl) {
-        e.preventDefault()
-        this._gridDownStart = { x: e.clientX, y: e.clientY, cell, dragging: false }
-        this.$refs.grid.setPointerCapture(e.pointerId)
-        return
-      }
-      // No selected ctrl: let the event through for native scrolling
-    },
-
-    onGridMove(e) {
-      const s = this._gridDownStart
-      if (!s || !this.selectedCtrl) return
-      e.preventDefault()
-
-      if (!s.dragging) {
-        const dx = Math.abs(e.clientX - s.x)
-        const dy = Math.abs(e.clientY - s.y)
-        if (dx > 8 || dy > 8) {
-          s.dragging = true
-          this.dragStart = s.cell
-          this.dragEnd = s.cell
-        }
-        return
-      }
-
-      const cell = this.cellFromEvent(e)
-      if (cell) this.dragEnd = cell
-    },
-
-    onGridUp(e) {
-      const s = this._gridDownStart
-      this._gridDownStart = null
-
-      if (this.selectedCtrl && s && s.dragging && this.dragStart && this.dragEnd) {
-        this.resizeSelectedTo(this.dragStart, this.dragEnd)
-      } else if (this.selectedCtrl && s && !s.dragging) {
-        // Single tap → deselect
-        this.deselectCtrl()
-      }
-
-      this.dragStart = null
-      this.dragEnd = null
-    },
-
+    // --- Control management ---
     nextAvailableCC(preferred, ...exclude) {
       const used = new Set(exclude)
       for (const ctrl of this.config.controls) {
@@ -448,14 +341,12 @@ export default {
       return preferred
     },
 
-    // --- Place control from popup ---
     placeControl(type) {
       const cell = this.popupCell
-      if (!cell || this.isCellOccupied(cell.col, cell.row)) {
+      if (!cell || this.occupiedSet.has(cell.col + ',' + cell.row)) {
         this.popup = null
         return
       }
-
       const ccDefaults = { knob: 1, fader: 7, button: 64, toggle: 64, xypad: 1 }
       const ctrl = {
         id: generateId(),
@@ -473,39 +364,33 @@ export default {
       this.popup = null
       this.selectedCtrl = ctrl.id
       this.repositionConfigPopup()
+      this.markDirty()
     },
 
-    // --- Selected control actions ---
-    moveSelectedTo(cell) {
-      const ctrl = this.config.controls.find(c => c.id === this.selectedCtrl)
-      if (!ctrl) return
-      for (let r = cell.row; r < cell.row + ctrl.rowSpan; r++) {
-        for (let c = cell.col; c < cell.col + ctrl.colSpan; c++) {
-          if (this.isCellOccupiedByOther(c, r, ctrl.id)) return
-        }
-      }
-      ctrl.col = cell.col
-      ctrl.row = cell.row
+    deleteControl(id) {
+      this.config.controls = this.config.controls.filter(c => c.id !== id)
+      if (this.selectedCtrl === id) this.selectedCtrl = null
       this.saveConfig()
-      this.repositionConfigPopup()
+      this.markDirty()
     },
 
-    resizeSelectedTo(from, to) {
+    finishDragResize(from, to) {
       const ctrl = this.config.controls.find(c => c.id === this.selectedCtrl)
       if (!ctrl) return
-
       const c1 = Math.min(from.col, to.col)
       const c2 = Math.max(from.col, to.col)
       const r1 = Math.min(from.row, to.row)
       const r2 = Math.max(from.row, to.row)
-
-      // Check no collision
       for (let r = r1; r <= r2; r++) {
         for (let c = c1; c <= c2; c++) {
-          if (this.isCellOccupiedByOther(c, r, ctrl.id)) return
+          const key = c + ',' + r
+          if (this.occupiedSet.has(key)) {
+            // Check it's not the selected control itself
+            if (c < ctrl.col || c >= ctrl.col + ctrl.colSpan ||
+                r < ctrl.row || r >= ctrl.row + ctrl.rowSpan) return
+          }
         }
       }
-
       ctrl.col = c1
       ctrl.row = r1
       ctrl.colSpan = c2 - c1 + 1
@@ -514,42 +399,33 @@ export default {
       this.repositionConfigPopup()
     },
 
-    isCellOccupiedByOther(col, row, excludeId) {
-      for (const ctrl of this.config.controls) {
-        if (ctrl.id === excludeId) continue
-        if (col >= ctrl.col && col < ctrl.col + ctrl.colSpan &&
-            row >= ctrl.row && row < ctrl.row + ctrl.rowSpan) {
-          return true
-        }
-      }
-      return false
-    },
-
-    deselectCtrl() {
-      this.selectedCtrl = null
-      this.dragStart = null
-      this.dragEnd = null
-    },
-
-    // --- Config ---
-    openConfig(ctrl) {
-      this.selectedCtrl = ctrl.id
-      this.repositionConfigPopup()
-    },
-
-    deleteControl(id) {
-      this.config.controls = this.config.controls.filter(c => c.id !== id)
-      if (this.selectedCtrl === id) this.selectedCtrl = null
+    updateCellSize(val) {
+      this.config.cellSize = val
       this.saveConfig()
     },
 
+    toggleLock() {
+      this.locked = !this.locked
+      if (this.locked) {
+        this.layoutMode = false
+        this.selectedCtrl = null
+      }
+    },
 
     saveConfig() {
       this.$emit('update', this.config)
       saveControlConfig(this.config)
     },
 
-    // --- Panel drag-to-snap ---
+    sendValue(ctrl) {
+      if (!this.engine) return
+      this.engine.sendCC(ctrl.cc, Math.round(this.controlValues[ctrl.id] ?? 0))
+      if (ctrl.type === 'xypad' && ctrl.cc2 != null) {
+        this.engine.sendCC(ctrl.cc2, Math.round(this.xyValues[ctrl.id] ?? 0))
+      }
+    },
+
+    // --- Layout mode ---
     startDragSnap(e) {
       if (e.target.closest('button')) return
       this.dragging = true
@@ -569,7 +445,6 @@ export default {
       const onUp = () => {
         this.dragging = false
         this.saveConfig()
-        if (el) el.releasePointerCapture(e.pointerId)
         el?.removeEventListener('pointermove', onMove)
         el?.removeEventListener('pointerup', onUp)
       }
@@ -577,7 +452,6 @@ export default {
       el?.addEventListener('pointerup', onUp)
     },
 
-    // --- Panel inner edge resize (percentage) ---
     startEdgeResize(e) {
       const parent = this.$el.parentElement
       if (!parent) return
@@ -606,80 +480,6 @@ export default {
       }
       edge.addEventListener('pointermove', onMove)
       edge.addEventListener('pointerup', onUp)
-    },
-
-    // --- Control interaction (play mode) ---
-    onControlDown(e, ctrl) {
-      if (this.selectedCtrl) {
-        if (this.selectedCtrl === ctrl.id) {
-          // Track for drag threshold
-          const cell = this.cellFromEvent(e)
-          this._gridDownStart = { x: e.clientX, y: e.clientY, cell, dragging: false }
-          this.$refs.grid.setPointerCapture(e.pointerId)
-        } else {
-          this.selectedCtrl = ctrl.id
-          this.repositionConfigPopup()
-        }
-        return
-      }
-
-      e.target.closest('.grid-control').setPointerCapture(e.pointerId)
-      this.activePointers[ctrl.id] = {
-        pointerId: e.pointerId,
-        startX: e.clientX,
-        startY: e.clientY,
-        startVal: this.controlValues[ctrl.id] ?? 0
-      }
-
-      if (ctrl.type === 'button') {
-        this.controlValues[ctrl.id] = 127
-        this.sendValue(ctrl)
-      } else if (ctrl.type === 'toggle') {
-        this.controlValues[ctrl.id] = (this.controlValues[ctrl.id] ?? 0) > 0 ? 0 : 127
-        this.sendValue(ctrl)
-      }
-    },
-
-    onControlMove(e, ctrl) {
-      const active = this.activePointers[ctrl.id]
-      if (!active || active.pointerId !== e.pointerId) return
-
-      const el = e.target.closest('.grid-control')
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-
-      if (ctrl.type === 'knob') {
-        const dy = active.startY - e.clientY
-        this.controlValues[ctrl.id] = Math.max(0, Math.min(127, active.startVal + (dy / 150) * 127))
-        this.sendValue(ctrl)
-      } else if (ctrl.type === 'fader') {
-        if (ctrl.colSpan > ctrl.rowSpan) {
-          this.controlValues[ctrl.id] = Math.max(0, Math.min(127, ((e.clientX - rect.left) / rect.width) * 127))
-        } else {
-          this.controlValues[ctrl.id] = Math.max(0, Math.min(127, (1 - (e.clientY - rect.top) / rect.height) * 127))
-        }
-        this.sendValue(ctrl)
-      } else if (ctrl.type === 'xypad') {
-        this.controlValues[ctrl.id] = Math.max(0, Math.min(127, ((e.clientX - rect.left) / rect.width) * 127))
-        this.xyValues[ctrl.id] = Math.max(0, Math.min(127, (1 - (e.clientY - rect.top) / rect.height) * 127))
-        this.sendValue(ctrl)
-      }
-    },
-
-    onControlUp(e, ctrl) {
-      delete this.activePointers[ctrl.id]
-      if (ctrl.type === 'button') {
-        this.controlValues[ctrl.id] = 0
-        this.sendValue(ctrl)
-      }
-    },
-
-    sendValue(ctrl) {
-      if (!this.engine) return
-      this.engine.sendCC(ctrl.cc, Math.round(this.controlValues[ctrl.id] ?? 0))
-      if (ctrl.type === 'xypad' && ctrl.cc2 != null) {
-        this.engine.sendCC(ctrl.cc2, Math.round(this.xyValues[ctrl.id] ?? 0))
-      }
     }
   }
 }
@@ -728,12 +528,6 @@ export default {
     accent-color: #ff8800
     height: 24px
 
-  span
-    font-size: 12px
-    color: #888
-    min-width: 16px
-    text-align: center
-
 .layout-toggle
   width: 28px
   height: 28px
@@ -761,6 +555,87 @@ export default {
     width: 16px
     height: 16px
 
+.grid-canvas
+  flex: 1
+  width: 100%
+  min-height: 0
+  display: block
+
+.popup-anchor
+  position: fixed
+  width: 1px
+  height: 1px
+  pointer-events: none
+
+.floating-popup
+  position: fixed
+  left: 0
+  top: 0
+  z-index: 201
+  background: #222
+  border: 1px solid #444
+  border-radius: 8px
+  padding: 16px
+  display: flex
+  flex-direction: column
+  gap: 12px
+  min-width: 240px
+  max-width: 300px
+
+  label
+    display: flex
+    justify-content: space-between
+    align-items: center
+    font-size: 14px
+    color: #aaa
+
+  input[type="text"], input[type="number"]
+    background: #333
+    color: #ccc
+    border: 1px solid #444
+    border-radius: 6px
+    padding: 8px 10px
+    font-size: 16px
+    min-height: 40px
+    width: 100px
+
+  button
+    background: #333
+    color: #ccc
+    border: 1px solid #444
+    border-radius: 6px
+    padding: 10px
+    font-size: 14px
+    cursor: pointer
+    min-height: 40px
+
+    &:hover
+      background: #444
+
+  .delete-config-btn
+    color: #f66
+    border-color: #633
+
+    &:hover
+      background: #622
+
+.add-controls-label
+  font-size: 13px
+  color: #888
+  text-transform: uppercase
+  letter-spacing: 1px
+
+.add-controls-row
+  display: flex
+  gap: 6px
+  flex-wrap: wrap
+
+  button
+    flex: 1
+    min-width: 60px
+    text-align: center
+
+// Layout mode
 .layout-overlay
   position: absolute
   inset: 0
@@ -847,209 +722,4 @@ export default {
     &::after
       height: 3px
       width: 32px
-
-.panel-grid
-  flex: 1
-  overflow: auto
-  position: relative
-
-  &.selecting
-    cursor: crosshair
-    touch-action: none
-
-  &.locked
-    overflow: hidden
-    touch-action: none
-
-.grid-inner
-  position: relative
-
-.grid-cell
-  position: absolute
-  background: #222
-  border-radius: 3px
-
-  &.highlight
-    background: rgba(255, 136, 0, 0.3)
-    outline: 1px solid #ff8800
-
-.grid-control
-  background: #2a2a2a
-  border: 1px solid #3a3a3a
-  border-radius: 6px
-  display: flex
-  flex-direction: column
-  align-items: center
-  justify-content: center
-  position: relative
-  overflow: hidden
-  touch-action: none
-  user-select: none
-
-  &.is-active
-    border-color: #ff8800
-
-  &.is-selected
-    border: 2px solid #ff8800
-    box-shadow: 0 0 8px rgba(255, 136, 0, 0.4)
-
-.control-label
-  font-size: 10px
-  color: #888
-  text-align: center
-  position: absolute
-  top: 2px
-  left: 2px
-  right: 2px
-  overflow: hidden
-  white-space: nowrap
-  text-overflow: ellipsis
-
-.control-value
-  font-size: 11px
-  color: #666
-  position: absolute
-  bottom: 2px
-
-.knob-svg
-  width: 65%
-  height: 65%
-
-.fader-track
-  background: #333
-  border-radius: 3px
-  position: relative
-  overflow: hidden
-
-  &.vertical
-    width: 30%
-    height: 80%
-
-  &.horizontal
-    width: 80%
-    height: 30%
-
-.fader-fill
-  position: absolute
-  background: #ff8800
-  border-radius: 3px
-
-  .vertical &
-    bottom: 0
-    left: 0
-    right: 0
-
-  .horizontal &
-    left: 0
-    top: 0
-    bottom: 0
-
-.xypad-area
-  width: 85%
-  height: 85%
-  background: #333
-  border-radius: 4px
-  position: relative
-
-.xypad-dot
-  position: absolute
-  width: 12px
-  height: 12px
-  background: #ff8800
-  border-radius: 50%
-  transform: translate(-50%, -50%)
-
-.btn-indicator
-  width: 50%
-  height: 50%
-  border-radius: 50%
-  background: #444
-  transition: background 0.1s
-
-  &.on
-    background: #ff8800
-    box-shadow: 0 0 8px #ff8800
-
-.floating-popup
-  position: fixed
-  left: 0
-  top: 0
-  z-index: 201
-  background: #222
-  border: 1px solid #444
-  border-radius: 8px
-  padding: 16px
-  display: flex
-  flex-direction: column
-  gap: 12px
-  min-width: 240px
-  max-width: 300px
-
-  label
-    display: flex
-    justify-content: space-between
-    align-items: center
-    font-size: 14px
-    color: #aaa
-
-  input[type="text"], input[type="number"]
-    background: #333
-    color: #ccc
-    border: 1px solid #444
-    border-radius: 6px
-    padding: 8px 10px
-    font-size: 16px
-    min-height: 40px
-    width: 100px
-
-  button
-    background: #333
-    color: #ccc
-    border: 1px solid #444
-    border-radius: 6px
-    padding: 10px
-    font-size: 14px
-    cursor: pointer
-    min-height: 40px
-
-    &:hover
-      background: #444
-
-  .delete-config-btn
-    color: #f66
-    border-color: #633
-
-    &:hover
-      background: #622
-
-.add-controls-label
-  font-size: 13px
-  color: #888
-  text-transform: uppercase
-  letter-spacing: 1px
-
-.add-controls-row
-  display: flex
-  gap: 6px
-  flex-wrap: wrap
-
-  button
-    flex: 1
-    min-width: 60px
-    text-align: center
-
-.slider-group
-  display: flex
-  align-items: center
-  gap: 8px
-
-  input[type="range"]
-    width: 100px
-    accent-color: #ff8800
-    height: 32px
-
-  .slider-value
-    font-size: 14px
-    color: #888
-    min-width: 24px
 </style>
