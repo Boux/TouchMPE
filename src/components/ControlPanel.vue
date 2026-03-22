@@ -313,6 +313,7 @@ export default {
       const el = this.$refs[refName]
       if (!el) return
       e.preventDefault()
+      el.setPointerCapture(e.pointerId)
       const startX = e.clientX
       const startY = e.clientY
       const startLeft = parseInt(el.style.left) || 0
@@ -322,11 +323,12 @@ export default {
         el.style.top = (startTop + e.clientY - startY) + 'px'
       }
       const onUp = () => {
-        document.removeEventListener('pointermove', onMove)
-        document.removeEventListener('pointerup', onUp)
+        el.releasePointerCapture(e.pointerId)
+        el.removeEventListener('pointermove', onMove)
+        el.removeEventListener('pointerup', onUp)
       }
-      document.addEventListener('pointermove', onMove)
-      document.addEventListener('pointerup', onUp)
+      el.addEventListener('pointermove', onMove)
+      el.addEventListener('pointerup', onUp)
     },
 
     // --- Control management ---
@@ -574,6 +576,7 @@ export default {
   left: 0
   top: 0
   z-index: 201
+  touch-action: none
   background: #222
   border: 1px solid #444
   border-radius: 8px
