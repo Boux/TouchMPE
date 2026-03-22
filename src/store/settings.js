@@ -19,9 +19,10 @@ const DEFAULTS = {
   // Touch
   noteOnQuantize: true,
   slidePitchMode: 'continuous',
+  gravityPreset: 'medium',
   gravityRadius: 0.5,
-  gravityStrength: 0.5,
-  gravityDecay: 0.5,
+  gravityStrength: 0.4,
+  gravityDecay: 0.4,
   pressureMode: 'auto'
 }
 

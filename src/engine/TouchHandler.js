@@ -116,7 +116,11 @@ export default class TouchHandler {
     const dt = Math.min((now - touch.lastBendTime) / 1000, 0.1)
     touch.lastBendTime = now
     const bendDelta = Math.abs(rawBend - touch.lastRawBend)
-    touch.movementWeight = Math.min(1, touch.movementWeight + bendDelta * 40)
+    const velocity = bendDelta / Math.max(dt, 0.001)
+    // Velocity-based: take the max of current weight and velocity-derived weight
+    // so fast movement instantly sets high weight, slow movement doesn't accumulate
+    const velocityWeight = Math.min(1, velocity * 1.5)
+    touch.movementWeight = Math.max(touch.movementWeight, velocityWeight)
     touch.movementWeight = Math.max(0, touch.movementWeight - this.gravityDecay * dt * 6)
     touch.lastRawBend = rawBend
 

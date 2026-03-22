@@ -98,31 +98,44 @@
 
         <template v-if="settings.slidePitchMode === 'assist'">
           <label>
-            Gravity Radius
-            <div class="slider-group">
-              <input type="range" :value="settings.gravityRadius" min="0" max="1" step="0.05"
-                @input="update('gravityRadius', +$event.target.value)" />
-              <span class="slider-value">{{ (settings.gravityRadius ?? 0.5).toFixed(2) }}</span>
-            </div>
+            Assist Strength
+            <select :value="settings.gravityPreset"
+              @change="applyGravityPreset($event.target.value)">
+              <option value="weak">Weak</option>
+              <option value="medium">Medium</option>
+              <option value="strong">Strong</option>
+              <option value="custom">Custom</option>
+            </select>
           </label>
 
-          <label>
-            Gravity Strength
-            <div class="slider-group">
-              <input type="range" :value="settings.gravityStrength" min="0" max="1" step="0.05"
-                @input="update('gravityStrength', +$event.target.value)" />
-              <span class="slider-value">{{ (settings.gravityStrength ?? 0.5).toFixed(2) }}</span>
-            </div>
-          </label>
+          <template v-if="settings.gravityPreset === 'custom'">
+            <label>
+              Gravity Radius
+              <div class="slider-group">
+                <input type="range" :value="settings.gravityRadius" min="0" max="1" step="0.05"
+                  @input="update('gravityRadius', +$event.target.value)" />
+                <span class="slider-value">{{ (settings.gravityRadius ?? 0.5).toFixed(2) }}</span>
+              </div>
+            </label>
 
-          <label>
-            Gravity Decay
-            <div class="slider-group">
-              <input type="range" :value="settings.gravityDecay" min="0.05" max="1" step="0.05"
-                @input="update('gravityDecay', +$event.target.value)" />
-              <span class="slider-value">{{ (settings.gravityDecay ?? 0.5).toFixed(2) }}</span>
-            </div>
-          </label>
+            <label>
+              Gravity Strength
+              <div class="slider-group">
+                <input type="range" :value="settings.gravityStrength" min="0" max="1" step="0.05"
+                  @input="update('gravityStrength', +$event.target.value)" />
+                <span class="slider-value">{{ (settings.gravityStrength ?? 0.5).toFixed(2) }}</span>
+              </div>
+            </label>
+
+            <label>
+              Gravity Decay
+              <div class="slider-group">
+                <input type="range" :value="settings.gravityDecay" min="0.05" max="1" step="0.05"
+                  @input="update('gravityDecay', +$event.target.value)" />
+                <span class="slider-value">{{ (settings.gravityDecay ?? 0.5).toFixed(2) }}</span>
+              </div>
+            </label>
+          </template>
         </template>
 
         <label>
@@ -199,6 +212,16 @@ export default {
       const midi = (octave + 1) * 12 + pitchClass
       const clamped = Math.max(0, Math.min(127, midi))
       this.$emit('update', { ...this.settings, rootNote: clamped, preset: 'custom' })
+    },
+
+    applyGravityPreset(name) {
+      const presets = {
+        weak: { gravityRadius: 0.35, gravityStrength: 0.20, gravityDecay: 0.20 },
+        medium: { gravityRadius: 0.5, gravityStrength: 0.4, gravityDecay: 0.4 },
+        strong: { gravityRadius: 0.8, gravityStrength: 0.75, gravityDecay: 0.75 }
+      }
+      const values = presets[name] || {}
+      this.$emit('update', { ...this.settings, gravityPreset: name, ...values })
     },
 
     applyPreset(presetName) {
