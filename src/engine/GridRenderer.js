@@ -40,20 +40,23 @@ export default class GridRenderer {
   setGrid(grid) {
     this.grid = grid
     this.touchState = grid.map(row => row.map(() => ({
-      active: false, bendNorm: 0, timbreNorm: 0.5, pressure: 0
+      active: false, bendNorm: 0, timbreNorm: 0.5, pressure: 0,
+      pointerX: 0, pointerY: 0
     })))
     this._computePadGeometry()
     this.staticDirty = true
     this.dynamicDirty = true
   }
 
-  setTouchActive(row, col, active, bendNorm, timbreNorm, pressure) {
+  setTouchActive(row, col, active, bendNorm, timbreNorm, pressure, pointerX = 0, pointerY = 0) {
     if (!this.touchState[row] || !this.touchState[row][col]) return
     const s = this.touchState[row][col]
     s.active = active
     s.bendNorm = bendNorm
     s.timbreNorm = timbreNorm
     s.pressure = pressure
+    s.pointerX = pointerX
+    s.pointerY = pointerY
     this.dynamicDirty = true
     this._updateHasActiveTouches()
   }
@@ -189,16 +192,22 @@ export default class GridRenderer {
         const ph = pad.h * dpr
         const radius = 4 * dpr
 
+        // Pointer position in canvas pixels
+        const fingerX = ts.pointerX * dpr
+        const fingerY = ts.pointerY * dpr
+        const padCenterX = px + pw / 2
+        const padCenterY = py + ph / 2
+
         // Glowing pad fill
-        const alpha = 0.4 + ts.pressure * 0.5
+        const alpha = 0.35 + ts.pressure * 0.5
         ctx.beginPath()
         ctx.roundRect(px, py, pw, ph, radius)
         ctx.fillStyle = `rgba(255, 136, 0, ${alpha})`
         ctx.fill()
 
         // Glow border
-        ctx.strokeStyle = `rgba(255, 170, 50, ${0.6 + ts.pressure * 0.4})`
-        ctx.lineWidth = 2 * dpr
+        ctx.strokeStyle = `rgba(255, 170, 50, ${0.5 + ts.pressure * 0.4})`
+        ctx.lineWidth = 1.5 * dpr
         ctx.stroke()
 
         // Redraw note name in white over the glow
@@ -210,46 +219,33 @@ export default class GridRenderer {
           ctx.font = `600 ${fontSize}px -apple-system, sans-serif`
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
-          ctx.fillText(name, px + pw / 2, py + ph / 2 - fontSize * 0.15)
+          ctx.fillText(name, padCenterX, padCenterY - fontSize * 0.15)
 
           const octave = Math.floor(cell.note / 12) - 1
           const octFontSize = fontSize * 0.55
           ctx.fillStyle = '#ddd'
           ctx.font = `${octFontSize}px -apple-system, sans-serif`
-          ctx.fillText(octave, px + pw / 2, py + ph / 2 + fontSize * 0.55)
+          ctx.fillText(octave, padCenterX, padCenterY + fontSize * 0.55)
         }
 
-        // Pitch bend indicator (horizontal bar at bottom of pad)
-        if (Math.abs(ts.bendNorm) > 0.02) {
-          const barY = py + ph - 5 * dpr
-          const barH = 3 * dpr
-          const barCenter = px + pw / 2
-          const maxExtent = pw / 2 - 6 * dpr
-          const barExtent = maxExtent * ts.bendNorm
-
-          ctx.fillStyle = 'rgba(255, 220, 80, 0.9)'
-          ctx.fillRect(
-            Math.min(barCenter, barCenter + barExtent),
-            barY,
-            Math.abs(barExtent),
-            barH
-          )
-          // Center tick mark
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'
-          ctx.fillRect(barCenter - 0.5 * dpr, barY, 1 * dpr, barH)
+        // Pitch bend line — horizontal from pad center to finger X
+        if (Math.abs(fingerX - padCenterX) > 2 * dpr) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
+          ctx.lineWidth = 1.5 * dpr
+          ctx.beginPath()
+          ctx.moveTo(padCenterX, padCenterY)
+          ctx.lineTo(fingerX, padCenterY)
+          ctx.stroke()
         }
 
-        // Timbre indicator (vertical bar on right side of pad)
-        const timbreHeight = (ph - 12 * dpr) * ts.timbreNorm
-        if (Math.abs(ts.timbreNorm - 0.5) > 0.02) {
-          const barX = px + pw - 5 * dpr
-          const barW = 3 * dpr
-          const barBottom = py + ph - 6 * dpr
-          ctx.fillStyle = 'rgba(80, 200, 255, 0.8)'
-          ctx.fillRect(barX, barBottom - timbreHeight, barW, timbreHeight)
-          // Center tick
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'
-          ctx.fillRect(barX, barBottom - (ph - 12 * dpr) * 0.5 - 0.5 * dpr, barW, 1 * dpr)
+        // Timbre line — vertical from pad center to finger Y
+        if (Math.abs(fingerY - padCenterY) > 2 * dpr) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
+          ctx.lineWidth = 1.5 * dpr
+          ctx.beginPath()
+          ctx.moveTo(padCenterX, padCenterY)
+          ctx.lineTo(padCenterX, fingerY)
+          ctx.stroke()
         }
       }
     }

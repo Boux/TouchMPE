@@ -125,7 +125,7 @@ export default class TouchHandler {
       currentY: pos.y
     })
 
-    this.grid.setTouchActive(hit.row, hit.col, true, 0, timbreNorm, pressure)
+    this.grid.setTouchActive(hit.row, hit.col, true, 0, timbreNorm, pressure, pos.x, pos.y)
   }
 
   _onPointerMove(e) {
@@ -145,7 +145,6 @@ export default class TouchHandler {
     touch.currentY = pos.y
 
     // Pitch bend: slide across the grid
-    // One pad spacing = colOffset semitones, normalized to pitchBendRange
     const rawXOffset = pos.x - touch.padCenterX
     const xOffset = this._applyDeadZonePx(rawXOffset)
     const semitones = (xOffset / touch.padSpacing) * this.colOffset
@@ -160,7 +159,7 @@ export default class TouchHandler {
     // Pressure
     this.engine.updatePressure(e.pointerId, pressure)
 
-    this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, timbreNorm, pressure)
+    this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, timbreNorm, pressure, pos.x, pos.y)
   }
 
   _onPointerUp(e) {
@@ -172,7 +171,7 @@ export default class TouchHandler {
     this.touches.delete(e.pointerId)
     this.filters.delete(e.pointerId)
 
-    this.grid.setTouchActive(touch.row, touch.col, false, 0, 0.5, 0)
+    this.grid.setTouchActive(touch.row, touch.col, false, 0, 0.5, 0, 0, 0)
   }
 
   /**
