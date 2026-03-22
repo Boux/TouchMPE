@@ -16,7 +16,7 @@ export default class ControlGridInput {
     this.selectedCtrl = null
     this.occupiedSet = new Set()
 
-    this._pointer = null // active pointer state
+    this._pointers = new Map() // pointerId → pointer state
     this._onDown = this._onDown.bind(this)
     this._onMove = this._onMove.bind(this)
     this._onUp = this._onUp.bind(this)
@@ -87,25 +87,15 @@ export default class ControlGridInput {
 
     // Selected mode: drag to resize/move
     if (this.selectedCtrl) {
-      if (ctrl && ctrl.id === this.selectedCtrl) {
-        // Drag from selected control
-        this._pointer = {
-          type: 'editDrag', pointerId: e.pointerId,
-          startX: e.clientX, startY: e.clientY,
-          cell: this.cellFromXY(x, y), dragging: false
-        }
-      } else if (ctrl) {
-        // Tap different control: select it
+      if (ctrl && ctrl.id !== this.selectedCtrl) {
         this.cb.onSelect(ctrl.id)
-        this._pointer = null
-      } else {
-        // Tap/drag empty cell
-        this._pointer = {
-          type: 'editDrag', pointerId: e.pointerId,
-          startX: e.clientX, startY: e.clientY,
-          cell: this.cellFromXY(x, y), dragging: false
-        }
+        return
       }
+      this._pointers.set(e.pointerId, {
+        type: 'editDrag',
+        startX: e.clientX, startY: e.clientY,
+        cell: this.cellFromXY(x, y), dragging: false
+      })
       return
     }
 
@@ -117,12 +107,12 @@ export default class ControlGridInput {
       const ctrlW = ctrl.colSpan * this.step - this.gap
       const ctrlH = ctrl.rowSpan * this.step - this.gap
 
-      this._pointer = {
-        type: 'control', pointerId: e.pointerId,
+      this._pointers.set(e.pointerId, {
+        type: 'control',
         ctrl, startX: e.clientX, startY: e.clientY,
         startVal: this.cb.getValue(ctrl.id),
         ctrlRect: { x: ctrlX + rect.left, y: ctrlY + rect.top, w: ctrlW, h: ctrlH }
-      }
+      })
 
       if (ctrl.type === 'button') {
         this.cb.onValueChange(ctrl, 127)
@@ -131,18 +121,17 @@ export default class ControlGridInput {
         this.cb.onValueChange(ctrl, cur > 0 ? 0 : 127)
       }
     } else if (!this.locked) {
-      // Pan
-      this._pointer = {
-        type: 'pan', pointerId: e.pointerId,
+      this._pointers.set(e.pointerId, {
+        type: 'pan',
         startX: e.clientX, startY: e.clientY,
         startPanX: this.panX, startPanY: this.panY
-      }
+      })
     }
   }
 
   _onMove(e) {
-    const p = this._pointer
-    if (!p || p.pointerId !== e.pointerId) return
+    const p = this._pointers.get(e.pointerId)
+    if (!p) return
 
     if (p.type === 'pan') {
       this.panX = p.startPanX - (e.clientX - p.startX)
@@ -159,8 +148,7 @@ export default class ControlGridInput {
         else return
       }
       const { x, y } = this._canvasXY(e)
-      const cell = this.cellFromXY(x, y)
-      this.cb.onDragResize(p.cell, cell)
+      this.cb.onDragResize(p.cell, this.cellFromXY(x, y))
       return
     }
 
@@ -189,16 +177,15 @@ export default class ControlGridInput {
   }
 
   _onUp(e) {
-    const p = this._pointer
-    if (!p || p.pointerId !== e.pointerId) return
-    this._pointer = null
+    const p = this._pointers.get(e.pointerId)
+    if (!p) return
+    this._pointers.delete(e.pointerId)
 
     if (p.type === 'editDrag') {
       if (p.dragging) {
         const { x, y } = this._canvasXY(e)
         this.cb.onDragResizeEnd(p.cell, this.cellFromXY(x, y))
       } else {
-        // Single tap on grid while selected → deselect
         this.cb.onDeselect()
       }
       return
