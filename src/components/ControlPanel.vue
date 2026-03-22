@@ -20,11 +20,22 @@
     </div>
 
     <div class="panel-toolbar">
-      <div class="panel-toolbar-slider">
+      <div v-if="!locked" class="panel-toolbar-slider">
         <input type="range" :value="config.cellSize" min="30" max="120" step="5"
           @input="updateCellSize(+$event.target.value)" title="Zoom" />
       </div>
+      <div v-if="locked" class="panel-toolbar-spacer"></div>
       <button
+        class="layout-toggle"
+        :class="{ active: locked }"
+        @click.stop="locked = !locked; if (locked) { layoutMode = false; selectedCtrl = null }"
+        title="Lock panel"
+      >
+        <svg v-if="locked" viewBox="0 0 20 20"><rect x="3" y="9" width="14" height="9" rx="2" fill="currentColor"/><path d="M6 9V6a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        <svg v-else viewBox="0 0 20 20"><rect x="3" y="9" width="14" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 9V6a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button
+        v-if="!locked"
         class="layout-toggle"
         :class="{ active: layoutMode }"
         @click.stop="layoutMode = !layoutMode"
@@ -37,7 +48,7 @@
     <div
       ref="grid"
       class="panel-grid"
-      :class="{ selecting: selectedCtrl }"
+      :class="{ selecting: selectedCtrl, locked: locked }"
       @pointerdown="onGridDown"
       @pointermove="onGridMove"
       @pointerup="onGridUp"
@@ -159,6 +170,7 @@ export default {
       xyValues: {},
       activePointers: {},
       layoutMode: false,
+      locked: false,
       dragging: false
     }
   },
@@ -360,6 +372,7 @@ export default {
 
     // --- Context menu (right click / long touch) ---
     onGridContext(e) {
+      if (this.locked) return
       const cell = this.cellFromEvent(e)
       if (!cell) return
       if (!this.isCellOccupied(cell.col, cell.row)) {
@@ -699,6 +712,9 @@ export default {
   border-bottom: 1px solid #333
   flex-shrink: 0
 
+.panel-toolbar-spacer
+  flex: 1
+
 .panel-toolbar-slider
   display: flex
   align-items: center
@@ -839,6 +855,10 @@ export default {
 
   &.selecting
     cursor: crosshair
+    touch-action: none
+
+  &.locked
+    overflow: hidden
     touch-action: none
 
 .grid-inner
