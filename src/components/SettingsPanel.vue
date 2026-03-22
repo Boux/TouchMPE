@@ -74,7 +74,7 @@
         </label>
       </div>
 
-      <div class="settings-section">
+      <div v-if="settings.mpeMode !== false" class="settings-section">
         <h3>Touch</h3>
 
         <label>
@@ -150,7 +150,7 @@
         </label>
       </div>
 
-      <div class="settings-section">
+      <div v-if="settings.mpeMode !== false" class="settings-section">
         <h3>MPE</h3>
 
         <label>
