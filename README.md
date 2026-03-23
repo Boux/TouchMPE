@@ -13,6 +13,7 @@ A browser-based MPE/MIDI controller for touchscreens.
 3. In TouchMPE's top bar, tap **MPE** and select **USB Peripheral Port** as your MIDI output.
 
 4. In your DAW, your phone should appear as a MIDI device. For example in **Bitwig**, go to Settings > Controllers > Add Controller > select **Roger Linn Design Linnstrument** (or any MPE controller), then set your Android device as the MIDI input/output.
+<img width="573" height="147" alt="image" src="https://github.com/user-attachments/assets/e91cf3e6-eedc-4202-85a2-4d1d20cf8765" />
 
 5. Play.
 
