@@ -4,9 +4,17 @@ A browser-based MPE/MIDI controller for touchscreens.
 
 ## Getting started
 
-1. Open the app in **Chrome** or **Edge** (Web MIDI required)
-2. Tap **MPE** (or **MIDI**) in the top bar and select your MIDI output
-3. Play
+1. Open [https://boux.github.io/TouchMPE/](https://boux.github.io/TouchMPE/) in **Chrome** on your Android phone or tablet. Optionally tap the menu and "Add to Home Screen" for fullscreen.
+
+2. Connect your phone to your computer via USB. On Android, go to **Settings > Connected Devices > USB** and select **MIDI**. If you don't see this option, you may need to enable Developer Mode first (Settings > About Phone > tap Build Number 7 times).
+
+   *Note: only tested on stock Android with Chrome. iOS and Samsung devices have not been tested — your mileage may vary.*
+
+3. In TouchMPE's top bar, tap **MPE** and select **USB Peripheral Port** as your MIDI output.
+
+4. In your DAW, your phone should appear as a MIDI device. For example in **Bitwig**, go to Settings > Controllers > Add Controller > select **Roger Linn Design Linnstrument** (or any MPE controller), then set your Android device as the MIDI input/output.
+
+5. Play.
 
 ## Features
 
