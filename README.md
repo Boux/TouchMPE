@@ -2,6 +2,8 @@
 
 A browser-based MPE/MIDI controller for touchscreens.
 
+<img width="1080" height="681" alt="image" src="https://github.com/user-attachments/assets/92036a46-bb3b-4ebf-aae7-d117762c6a4b" />
+
 ## Getting started
 
 1. Open [https://boux.github.io/TouchMPE/](https://boux.github.io/TouchMPE/) in **Chrome** on your Android phone or tablet. Optionally tap the menu and "Add to Home Screen" for fullscreen.
@@ -9,10 +11,13 @@ A browser-based MPE/MIDI controller for touchscreens.
 2. Connect your phone to your computer via USB. On Android, go to **Settings > Connected Devices > USB** and select **MIDI**. If you don't see this option, you may need to enable Developer Mode first (Settings > About Phone > tap Build Number 7 times).
 
    *Note: only tested on stock Android with Chrome. iOS and Samsung devices have not been tested — your mileage may vary.*
+<img width="270" height="600" alt="Screenshot (Mar 22, 2026 8_07_04 PM)" src="https://github.com/user-attachments/assets/f51f1992-7805-4dbe-8f75-ac0f0b54db0d" />
 
 3. In TouchMPE's top bar, tap **MPE** and select **USB Peripheral Port** as your MIDI output.
+<img width="270" height="600" alt="Screenshot_20260322-200921" src="https://github.com/user-attachments/assets/a5e45999-d562-43aa-a349-08f0671972f0" />
 
 4. In your DAW, your phone should appear as a MIDI device. For example in **Bitwig**, go to Settings > Controllers > Add Controller > select **Roger Linn Design Linnstrument** (or any MPE controller), then set your Android device as the MIDI input/output.
+<img width="573" height="147" alt="image" src="https://github.com/user-attachments/assets/e91cf3e6-eedc-4202-85a2-4d1d20cf8765" />
 
 5. Play.
 
@@ -40,7 +45,7 @@ A browser-based MPE/MIDI controller for touchscreens.
 ## CC Panel
 
 - Tap **CC** in the top bar to open
-- Right-click or long-press an empty cell to add a control
+- Right-click (desktop) or long-press (touchscreen) an empty cell to add a control
 - Right-click or long-press a control to configure it (label, CC number)
 - Tap a highlighted control then drag to resize
 - Use the lock button to prevent accidental edits
