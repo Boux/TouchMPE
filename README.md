@@ -45,7 +45,7 @@ A browser-based MPE/MIDI controller for touchscreens.
 ## CC Panel
 
 - Tap **CC** in the top bar to open
-- Right-click or long-press an empty cell to add a control
+- Right-click (desktop) or long-press (touchscreen) an empty cell to add a control
 - Right-click or long-press a control to configure it (label, CC number)
 - Tap a highlighted control then drag to resize
 - Use the lock button to prevent accidental edits
