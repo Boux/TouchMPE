@@ -151,7 +151,7 @@ export default {
     this.renderer = new ControlGridRenderer(this.$refs.gridCanvas)
     this.input = new ControlGridInput(this.$refs.gridCanvas, {
       onValueChange: (ctrl, val, valY) => {
-        this.controlValues[ctrl.id] = val
+        if (val !== undefined) this.controlValues[ctrl.id] = val
         if (valY !== undefined) this.xyValues[ctrl.id] = valY
         this.sendValue(ctrl)
         this.markDirty()

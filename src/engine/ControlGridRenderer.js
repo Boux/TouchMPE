@@ -137,7 +137,7 @@ export default class ControlGridRenderer {
           this._drawFader(ctx, x, y, w, h, val, ctrl.colSpan > ctrl.rowSpan)
           break
         case 'xypad':
-          this._drawXYPad(ctx, x, y, w, h, val, xyValues[ctrl.id] ?? 64)
+          this._drawXYPad(ctx, x, y, w, h, val, xyValues[ctrl.id] ?? 64, ctrl)
           break
         case 'button':
         case 'toggle':
@@ -145,23 +145,20 @@ export default class ControlGridRenderer {
           break
       }
 
-      // Label
-      const label = ctrl.label || ('CC' + (ctrl.cc ?? 1))
-      ctx.fillStyle = TEXT_MED
-      ctx.font = `600 ${Math.min(11, minDim * 0.18)}px -apple-system, sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'top'
-      ctx.fillText(label, cx, y + 6, w - 12)
+      // Label and value — XY pads draw these inside the pad area
+      if (ctrl.type !== 'xypad') {
+        const label = ctrl.label || ('CC' + (ctrl.cc ?? 1))
+        ctx.fillStyle = TEXT_MED
+        ctx.font = `600 ${Math.min(11, minDim * 0.18)}px -apple-system, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        ctx.fillText(label, cx, y + 6, w - 12)
 
-      // Value (skip for buttons/toggles)
-      if (ctrl.type !== 'button' && ctrl.type !== 'toggle') {
-        ctx.fillStyle = TEXT_DIM
-        ctx.font = `600 ${Math.min(11, minDim * 0.16)}px -apple-system, sans-serif`
-        ctx.textBaseline = 'bottom'
-        if (ctrl.type === 'xypad') {
-          const valY = xyValues[ctrl.id] ?? 64
-          ctx.fillText(`${Math.round(val)}, ${Math.round(valY)}`, cx, y + h - 5, w - 12)
-        } else {
+        // Value (skip for buttons/toggles)
+        if (ctrl.type !== 'button' && ctrl.type !== 'toggle') {
+          ctx.fillStyle = TEXT_DIM
+          ctx.font = `600 ${Math.min(11, minDim * 0.16)}px -apple-system, sans-serif`
+          ctx.textBaseline = 'bottom'
           ctx.fillText(Math.round(val).toString(), cx, y + h - 5, w - 12)
         }
       }
@@ -224,14 +221,57 @@ export default class ControlGridRenderer {
     }
   }
 
-  _drawXYPad(ctx, x, y, w, h, valX, valY) {
-    const pad = Math.min(w, h) * 0.075
-    const ax = x + pad
-    const ay = y + pad + 14
-    const aw = w - pad * 2
-    const ah = h - pad * 2 - 18
+  _drawXYPad(ctx, x, y, w, h, valX, valY, ctrl) {
+    const showFaders = (ctrl ? ctrl.colSpan : 1) >= 2 && (ctrl ? ctrl.rowSpan : 1) >= 2
+    const strip = 10
+    const pad = showFaders ? 12 : 6
+    const topPad = showFaders ? 16 : 6
+    const bottomPad = showFaders ? 16 : 6
+    const faderGap = 6
 
-    // Background with border
+    let ax, ay, aw, ah
+
+    if (showFaders) {
+      // Side fader areas
+      const fx = x + pad
+      const fy = y + topPad
+      const fh = h - topPad - bottomPad
+      const bfx = x + pad + strip + faderGap
+      const bfy = y + h - bottomPad - strip
+      const bfw = w - pad * 2 - strip - faderGap
+
+      ax = bfx
+      ay = fy
+      aw = bfw
+      ah = fh - strip - faderGap
+
+      // --- Y-axis fader (left) ---
+      ctx.fillStyle = '#333'
+      ctx.fillRect(fx, fy, strip, ah)
+      ctx.strokeStyle = '#444'
+      ctx.lineWidth = 1
+      ctx.strokeRect(fx, fy, strip, ah)
+      const yFillH = (valY / 127) * ah
+      ctx.fillStyle = ORANGE
+      ctx.fillRect(fx, fy + ah - yFillH, strip, yFillH)
+
+      // --- X-axis fader (bottom) ---
+      ctx.fillStyle = '#333'
+      ctx.fillRect(bfx, bfy, bfw, strip)
+      ctx.strokeStyle = '#444'
+      ctx.lineWidth = 1
+      ctx.strokeRect(bfx, bfy, bfw, strip)
+      const xFillW = (valX / 127) * bfw
+      ctx.fillStyle = ORANGE
+      ctx.fillRect(bfx, bfy, xFillW, strip)
+    } else {
+      ax = x + pad
+      ay = y + topPad
+      aw = w - pad * 2
+      ah = h - topPad - bottomPad
+    }
+
+    // --- Main pad ---
     ctx.fillStyle = '#333'
     ctx.fillRect(ax, ay, aw, ah)
     ctx.strokeStyle = '#444'
@@ -242,7 +282,6 @@ export default class ControlGridRenderer {
     ctx.setLineDash([1, 4])
     ctx.strokeStyle = '#4a4a4a'
     ctx.lineWidth = 1
-    // Vertical lines (quarters)
     for (let i = 1; i < 4; i++) {
       const gx = Math.round(ax + (aw * i) / 4) + 0.5
       ctx.beginPath()
@@ -250,7 +289,6 @@ export default class ControlGridRenderer {
       ctx.lineTo(gx, ay + ah)
       ctx.stroke()
     }
-    // Horizontal lines (quarters)
     for (let i = 1; i < 4; i++) {
       const gy = Math.round(ay + (ah * i) / 4) + 0.5
       ctx.beginPath()
@@ -260,13 +298,37 @@ export default class ControlGridRenderer {
     }
     ctx.setLineDash([])
 
-    // Dot
+    // Crosshair lines from dot to edges
     const dotX = ax + (valX / 127) * aw
     const dotY = ay + (1 - valY / 127) * ah
+    ctx.strokeStyle = 'rgba(255, 136, 0, 0.25)'
+    ctx.lineWidth = 1
     ctx.beginPath()
-    ctx.arc(dotX, dotY, 6, 0, Math.PI * 2)
+    ctx.moveTo(dotX, ay)
+    ctx.lineTo(dotX, ay + ah)
+    ctx.moveTo(ax, dotY)
+    ctx.lineTo(ax + aw, dotY)
+    ctx.stroke()
+
+    // Dot
+    ctx.beginPath()
+    ctx.arc(dotX, dotY, 5, 0, Math.PI * 2)
     ctx.fillStyle = ORANGE
     ctx.fill()
+
+    // Label inside pad (top-left)
+    const label = ctrl ? (ctrl.label || ('CC' + (ctrl.cc ?? 1))) : ''
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'
+    ctx.font = `600 ${Math.min(10, aw * 0.08)}px -apple-system, sans-serif`
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
+    ctx.fillText(label, ax + 4, ay + 3, aw - 8)
+
+    // Coordinates (bottom-right)
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'bottom'
+    ctx.fillText(`${Math.round(valX)}, ${Math.round(valY)}`, ax + aw - 4, ay + ah - 3, aw - 8)
   }
 
   _drawButton(ctx, x, y, w, h, on) {

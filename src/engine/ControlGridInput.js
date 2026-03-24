@@ -107,11 +107,32 @@ export default class ControlGridInput {
       const ctrlW = ctrl.colSpan * this.step - this.gap
       const ctrlH = ctrl.rowSpan * this.step - this.gap
 
+      // For XY pads, detect which zone was touched
+      let xyZone = null
+      if (ctrl.type === 'xypad' && ctrl.colSpan >= 2 && ctrl.rowSpan >= 2) {
+        const step = this.cellSize + this.gap
+        const localX = (e.clientX - rect.left) - (ctrl.col * step - this.panX)
+        const localY = (e.clientY - rect.top) - (ctrl.row * step - this.panY)
+        const strip = 10
+        const pad = 12
+        const topPad = 16
+        const bottomPad = 16
+        const faderGap = 6
+        const fh = ctrlH - topPad - bottomPad
+        const ah = fh - strip - faderGap
+        if (localX < pad + strip + faderGap && localY >= topPad && localY < topPad + ah) {
+          xyZone = 'y'
+        } else if (localY >= topPad + ah + faderGap) {
+          xyZone = 'x'
+        }
+      }
+
       this._pointers.set(e.pointerId, {
         type: 'control',
         ctrl, startX: e.clientX, startY: e.clientY,
         startVal: this.cb.getValue(ctrl.id),
-        ctrlRect: { x: ctrlX + rect.left, y: ctrlY + rect.top, w: ctrlW, h: ctrlH }
+        ctrlRect: { x: ctrlX + rect.left, y: ctrlY + rect.top, w: ctrlW, h: ctrlH },
+        xyZone
       })
 
       if (ctrl.type === 'button') {
@@ -171,7 +192,13 @@ export default class ControlGridInput {
       } else if (ctrl.type === 'xypad') {
         const valX = Math.max(0, Math.min(127, ((e.clientX - r.x) / r.w) * 127))
         const valY = Math.max(0, Math.min(127, (1 - (e.clientY - r.y) / r.h) * 127))
-        this.cb.onValueChange(ctrl, valX, valY)
+        if (p.xyZone === 'x') {
+          this.cb.onValueChange(ctrl, valX)
+        } else if (p.xyZone === 'y') {
+          this.cb.onValueChange(ctrl, undefined, valY)
+        } else {
+          this.cb.onValueChange(ctrl, valX, valY)
+        }
       }
     }
   }
