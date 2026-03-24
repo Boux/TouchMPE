@@ -12,6 +12,13 @@ export default class MPEEngine {
     this.pitchBendRange = 48 // semitones
     this.mpeMode = true
     this.pendingBytes = []
+
+    // Per-channel last-sent values to skip redundant messages.
+    // Reduces USB MIDI throughput to avoid transport corruption
+    // (Chrome on Android corrupts CC 74 → CC 64 under high load).
+    this._lastPitchBend = new Int32Array(16).fill(-1)
+    this._lastTimbre = new Int8Array(16).fill(-1)
+    this._lastPressure = new Int8Array(16).fill(-1)
   }
 
   /**
@@ -56,6 +63,12 @@ export default class MPEEngine {
     }
   }
 
+  _resetChannelState(channel) {
+    this._lastPitchBend[channel] = -1
+    this._lastTimbre[channel] = -1
+    this._lastPressure[channel] = -1
+  }
+
   /**
    * Called on pointerdown. Allocates channel and sends Note On.
    * Returns the allocated channel, or null if no note.
@@ -76,7 +89,10 @@ export default class MPEEngine {
       this.pendingBytes.push(...msg.noteOff(channel, stolen.note))
     }
 
+    this._resetChannelState(channel)
     const timbreValue = Math.round(Math.max(0, Math.min(1, initialTimbreNorm)) * 127)
+    this._lastTimbre[channel] = timbreValue
+    this._lastPitchBend[channel] = 8192
     this.pendingBytes.push(
       ...msg.pitchBend(channel, 8192),
       ...msg.controlChange(channel, 74, timbreValue),
@@ -97,6 +113,7 @@ export default class MPEEngine {
     if (info) {
       this.pendingBytes.push(...msg.noteOff(this.mpeMode ? channel : 0, info.note))
     }
+    this._resetChannelState(channel)
     this.allocator.release(channel)
   }
 
@@ -111,6 +128,8 @@ export default class MPEEngine {
 
     const clamped = Math.max(-1, Math.min(1, bendNorm))
     const value = Math.round(8192 + clamped * 8191)
+    if (value === this._lastPitchBend[channel]) return
+    this._lastPitchBend[channel] = value
     this.pendingBytes.push(...msg.pitchBend(channel, value))
   }
 
@@ -124,6 +143,8 @@ export default class MPEEngine {
     if (channel === null) return
 
     const value = Math.round(Math.max(0, Math.min(1, timbreNorm)) * 127)
+    if (value === this._lastTimbre[channel]) return
+    this._lastTimbre[channel] = value
     this.pendingBytes.push(...msg.controlChange(channel, 74, value))
   }
 
@@ -136,8 +157,9 @@ export default class MPEEngine {
     const channel = this.allocator.channelForPointer(pointerId)
     if (channel === null) return
 
-    const value = Math.round(Math.max(0, Math.min(1, pressureNorm)) * 127)
-    this.pendingBytes.push(...msg.channelPressure(channel, value))
+    // Pressure disabled — unreliable on touch devices, and the extra
+    // throughput can trigger USB MIDI byte corruption on some platforms.
+    return
   }
 
   /**
@@ -151,19 +173,12 @@ export default class MPEEngine {
 
   /**
    * Flush all pending MIDI messages to the output. Call once per frame.
+   * Sends all bytes in a single send() call so the USB MIDI transport
+   * handles them as one transfer rather than many small ones.
    */
   flush() {
     if (this.pendingBytes.length === 0) return
-    // Parse and send each MIDI message individually.
-    // Status byte high nibble determines message length.
-    let i = 0
-    while (i < this.pendingBytes.length) {
-      const status = this.pendingBytes[i] & 0xF0
-      // Channel Pressure and Program Change are 2 bytes, everything else is 3
-      const len = (status === 0xC0 || status === 0xD0) ? 2 : 3
-      this.midiOutput.send(this.pendingBytes.slice(i, i + len))
-      i += len
-    }
+    this.midiOutput.send(this.pendingBytes)
     this.pendingBytes = []
   }
 
@@ -172,9 +187,14 @@ export default class MPEEngine {
    */
   panic() {
     for (let ch = 0; ch <= 15; ch++) {
+      this.midiOutput.send(msg.allSoundOff(ch))
       this.midiOutput.send(msg.allNotesOff(ch))
+      this.midiOutput.send(msg.controlChange(ch, 64, 0))
       this.midiOutput.send(msg.pitchBend(ch, 8192))
     }
     this.allocator.setMemberCount(this.allocator.memberCount)
+    this._lastPitchBend.fill(-1)
+    this._lastTimbre.fill(-1)
+    this._lastPressure.fill(-1)
   }
 }

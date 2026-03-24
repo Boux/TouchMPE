@@ -150,6 +150,7 @@ export default class TouchHandler {
 
   _onPointerDown(e) {
     e.preventDefault()
+    this.canvas.setPointerCapture(e.pointerId)
     const pos = this._getCanvasPos(e)
     const hit = this.grid.hitTest(pos.x, pos.y)
     if (!hit) return

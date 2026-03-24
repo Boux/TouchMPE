@@ -169,6 +169,8 @@
             @change="update('memberChannels', +$event.target.value)" />
         </label>
       </div>
+
+      <div class="settings-build">build 9</div>
     </div>
   </div>
 </template>
@@ -355,4 +357,10 @@ export default {
     font-size: 13px
     color: #888
     min-width: 40px
+
+.settings-build
+  text-align: center
+  font-size: 11px
+  color: #444
+  padding: 16px 0 4px
 </style>

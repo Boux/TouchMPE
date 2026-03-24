@@ -1,6 +1,6 @@
 <template>
   <div class="toolbar">
-    <span class="toolbar-title">TouchMPE</span>
+    <img src="/icon.svg" class="toolbar-logo" alt="TouchMPE" />
 
     <div class="toolbar-inline">
       <button class="toolbar-btn small" @click="$emit('octave-down')">-</button>
@@ -115,6 +115,11 @@ export default {
   flex-shrink: 0
   gap: 6px
   position: relative
+
+.toolbar-logo
+  width: 20px
+  height: 20px
+  border-radius: 4px
 
 .toolbar-title
   font-size: 13px

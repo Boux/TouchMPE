@@ -57,3 +57,19 @@ export function pitchBendSensitivity(channel, semitones) {
 export function allNotesOff(channel) {
   return controlChange(channel, 123, 0)
 }
+
+/**
+ * All Sound Off on a channel — immediately kills all sound
+ * regardless of sustain pedal or other controllers.
+ */
+export function allSoundOff(channel) {
+  return controlChange(channel, 120, 0)
+}
+
+/**
+ * Reset All Controllers on a channel — clears sustain, expression,
+ * modulation, and all other controllers to their default values.
+ */
+export function resetAllControllers(channel) {
+  return controlChange(channel, 121, 0)
+}
