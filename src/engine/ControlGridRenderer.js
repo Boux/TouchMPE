@@ -4,7 +4,7 @@ const CTRL_BG = '#2a2a2a'
 const CTRL_BORDER = '#3a3a3a'
 const ORANGE = '#ff8800'
 const TEXT_DIM = '#666'
-const TEXT_MED = '#888'
+const TEXT_MED = '#999'
 
 export default class ControlGridRenderer {
   constructor(canvas) {
@@ -50,17 +50,18 @@ export default class ControlGridRenderer {
     const endCol = Math.ceil((panX + this.width) / step)
     const endRow = Math.ceil((panY + this.height) / step)
 
-    // Draw empty cells
+    // Fill empty cells
     ctx.fillStyle = CELL_BG
     for (let row = startRow; row <= endRow; row++) {
       for (let col = startCol; col <= endCol; col++) {
         if (occupiedSet.has(col + ',' + row)) continue
         const x = col * step - panX
         const y = row * step - panY
-        this._roundRect(ctx, x, y, cellSize, cellSize, 3)
-        ctx.fill()
+        ctx.fillRect(x, y, cellSize, cellSize)
       }
     }
+
+    // Grid lines disabled for testing
 
     // Draw drag highlight
     if (selectedCtrl && dragStart && dragEnd) {
@@ -75,36 +76,51 @@ export default class ControlGridRenderer {
         for (let c = c1; c <= c2; c++) {
           const x = c * step - panX
           const y = r * step - panY
-          this._roundRect(ctx, x, y, cellSize, cellSize, 3)
-          ctx.fill()
-          ctx.stroke()
+          ctx.fillRect(x, y, cellSize, cellSize)
+          ctx.strokeRect(x, y, cellSize, cellSize)
         }
       }
     }
 
-    // Draw controls
+    // Draw controls — flush with each other, dark border between
     for (const ctrl of controls) {
       const x = ctrl.col * step - panX
       const y = ctrl.row * step - panY
-      const w = ctrl.colSpan * step - gap
-      const h = ctrl.rowSpan * step - gap
+      const w = ctrl.colSpan * step
+      const h = ctrl.rowSpan * step
       const val = controlValues[ctrl.id] ?? 0
       const isSelected = selectedCtrl === ctrl.id
 
-      // Background
+      // Background (fills full cell including gap area)
       ctx.fillStyle = CTRL_BG
-      ctx.strokeStyle = isSelected ? ORANGE : CTRL_BORDER
-      ctx.lineWidth = isSelected ? 2 : 1
-      this._roundRect(ctx, x, y, w, h, 6)
-      ctx.fill()
-      ctx.stroke()
+      ctx.fillRect(x, y, w, h)
 
-      // Selection glow
+      // Embossed look: light top/left edges, dark bottom/right edges
+      if (!isSelected) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(x + 0.5, y + h)
+        ctx.lineTo(x + 0.5, y + 0.5)
+        ctx.lineTo(x + w, y + 0.5)
+        ctx.stroke()
+
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'
+        ctx.beginPath()
+        ctx.moveTo(x + w - 0.5, y)
+        ctx.lineTo(x + w - 0.5, y + h - 0.5)
+        ctx.lineTo(x, y + h - 0.5)
+        ctx.stroke()
+      }
+
+      // Selection border + glow
       if (isSelected) {
+        ctx.strokeStyle = ORANGE
+        ctx.lineWidth = 2
+        ctx.strokeRect(x, y, w, h)
         ctx.shadowColor = ORANGE
         ctx.shadowBlur = 8
-        this._roundRect(ctx, x, y, w, h, 6)
-        ctx.stroke()
+        ctx.strokeRect(x, y, w, h)
         ctx.shadowBlur = 0
       }
 
@@ -115,7 +131,7 @@ export default class ControlGridRenderer {
 
       switch (ctrl.type) {
         case 'knob':
-          this._drawKnob(ctx, cx, cy, minDim * 0.32, val)
+          this._drawKnob(ctx, cx, cy, minDim * 0.24, val)
           break
         case 'fader':
           this._drawFader(ctx, x, y, w, h, val, ctrl.colSpan > ctrl.rowSpan)
@@ -132,16 +148,21 @@ export default class ControlGridRenderer {
       // Label
       const label = ctrl.label || ('CC' + (ctrl.cc ?? 1))
       ctx.fillStyle = TEXT_MED
-      ctx.font = `${Math.min(11, minDim * 0.18)}px -apple-system, sans-serif`
+      ctx.font = `600 ${Math.min(11, minDim * 0.18)}px -apple-system, sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
-      ctx.fillText(label, cx, y + 3, w - 4)
+      ctx.fillText(label, cx, y + 6, w - 12)
 
       // Value
       ctx.fillStyle = TEXT_DIM
-      ctx.font = `${Math.min(11, minDim * 0.16)}px -apple-system, sans-serif`
+      ctx.font = `600 ${Math.min(11, minDim * 0.16)}px -apple-system, sans-serif`
       ctx.textBaseline = 'bottom'
-      ctx.fillText(Math.round(val).toString(), cx, y + h - 2, w - 4)
+      if (ctrl.type === 'xypad') {
+        const valY = xyValues[ctrl.id] ?? 64
+        ctx.fillText(`${Math.round(val)}, ${Math.round(valY)}`, cx, y + h - 5, w - 12)
+      } else {
+        ctx.fillText(Math.round(val).toString(), cx, y + h - 5, w - 12)
+      }
     }
   }
 
@@ -154,7 +175,7 @@ export default class ControlGridRenderer {
     ctx.beginPath()
     ctx.arc(cx, cy, radius, startAngle, endAngle)
     ctx.strokeStyle = '#444'
-    ctx.lineWidth = Math.max(3, radius * 0.16)
+    ctx.lineWidth = Math.max(4, radius * 0.25)
     ctx.lineCap = 'round'
     ctx.stroke()
 
@@ -178,40 +199,64 @@ export default class ControlGridRenderer {
   }
 
   _drawFader(ctx, x, y, w, h, val, horizontal) {
-    const pad = 0.1
-    const trackW = horizontal ? w * 0.8 : w * 0.3
-    const trackH = horizontal ? h * 0.3 : h * 0.8
+    const trackW = horizontal ? w * 0.85 : w * 0.45
+    const trackH = horizontal ? h * 0.45 : h * 0.8
     const tx = x + (w - trackW) / 2
     const ty = y + (h - trackH) / 2
 
-    // Track background
+    // Track background with border
     ctx.fillStyle = '#333'
-    this._roundRect(ctx, tx, ty, trackW, trackH, 3)
-    ctx.fill()
+    ctx.fillRect(tx, ty, trackW, trackH)
+    ctx.strokeStyle = '#444'
+    ctx.lineWidth = 1
+    ctx.strokeRect(tx, ty, trackW, trackH)
 
     // Fill
     ctx.fillStyle = ORANGE
     if (horizontal) {
       const fillW = (val / 127) * trackW
-      this._roundRect(ctx, tx, ty, fillW, trackH, 3)
+      ctx.fillRect(tx, ty, fillW, trackH)
     } else {
       const fillH = (val / 127) * trackH
-      this._roundRect(ctx, tx, ty + trackH - fillH, trackW, fillH, 3)
+      ctx.fillRect(tx, ty + trackH - fillH, trackW, fillH)
     }
-    ctx.fill()
   }
 
   _drawXYPad(ctx, x, y, w, h, valX, valY) {
     const pad = Math.min(w, h) * 0.075
     const ax = x + pad
-    const ay = y + pad + 12
+    const ay = y + pad + 14
     const aw = w - pad * 2
-    const ah = h - pad * 2 - 14
+    const ah = h - pad * 2 - 18
 
-    // Background
+    // Background with border
     ctx.fillStyle = '#333'
-    this._roundRect(ctx, ax, ay, aw, ah, 4)
-    ctx.fill()
+    ctx.fillRect(ax, ay, aw, ah)
+    ctx.strokeStyle = '#444'
+    ctx.lineWidth = 1
+    ctx.strokeRect(ax, ay, aw, ah)
+
+    // Dotted grid lines
+    ctx.setLineDash([1, 4])
+    ctx.strokeStyle = '#4a4a4a'
+    ctx.lineWidth = 1
+    // Vertical lines (quarters)
+    for (let i = 1; i < 4; i++) {
+      const gx = Math.round(ax + (aw * i) / 4) + 0.5
+      ctx.beginPath()
+      ctx.moveTo(gx, ay)
+      ctx.lineTo(gx, ay + ah)
+      ctx.stroke()
+    }
+    // Horizontal lines (quarters)
+    for (let i = 1; i < 4; i++) {
+      const gy = Math.round(ay + (ah * i) / 4) + 0.5
+      ctx.beginPath()
+      ctx.moveTo(ax, gy)
+      ctx.lineTo(ax + aw, gy)
+      ctx.stroke()
+    }
+    ctx.setLineDash([])
 
     // Dot
     const dotX = ax + (valX / 127) * aw

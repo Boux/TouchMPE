@@ -64,11 +64,15 @@ export default class GridRenderer {
   }
 
   hitTest(x, y) {
+    // Hitbox extends to cover the gap between pads so taps in the
+    // gap still register. The visual pad stays the same size.
+    const halfGap = this.gap / 2
     for (let r = 0; r < this.pads.length; r++) {
       for (let c = 0; c < this.pads[r].length; c++) {
         const pad = this.pads[r][c]
         if (!pad) continue
-        if (x >= pad.x && x < pad.x + pad.w && y >= pad.y && y < pad.y + pad.h) {
+        if (x >= pad.x - halfGap && x < pad.x + pad.w + halfGap &&
+            y >= pad.y - halfGap && y < pad.y + pad.h + halfGap) {
           return {
             row: r, col: c, note: pad.note,
             centerX: pad.x + pad.w / 2,
@@ -132,8 +136,6 @@ export default class GridRenderer {
         const py = pad.y * dpr
         const pw = pad.w * dpr
         const ph = pad.h * dpr
-        const radius = 4 * dpr
-
         // Pad background
         let bg
         if (!cell.inScale) {
@@ -145,7 +147,7 @@ export default class GridRenderer {
         }
 
         ctx.beginPath()
-        ctx.roundRect(px, py, pw, ph, radius)
+        ctx.rect(px, py, pw, ph)
         ctx.fillStyle = bg
         ctx.fill()
 
@@ -193,8 +195,6 @@ export default class GridRenderer {
         const py = pad.y * dpr
         const pw = pad.w * dpr
         const ph = pad.h * dpr
-        const radius = 4 * dpr
-
         // Pointer position in canvas pixels
         const fingerX = ts.pointerX * dpr
         const fingerY = ts.pointerY * dpr
@@ -204,7 +204,7 @@ export default class GridRenderer {
         // Glowing pad fill
         const alpha = 0.35 + ts.pressure * 0.5
         ctx.beginPath()
-        ctx.roundRect(px, py, pw, ph, radius)
+        ctx.rect(px, py, pw, ph)
         ctx.fillStyle = `rgba(255, 136, 0, ${alpha})`
         ctx.fill()
 

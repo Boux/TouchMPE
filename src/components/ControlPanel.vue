@@ -41,7 +41,7 @@
         @click.stop="layoutMode = !layoutMode"
         title="Move/resize panel"
       >
-        <svg viewBox="0 0 20 20"><path d="M3 3h4v4H3zM3 13h4v4H3zM13 3h4v4h-4zM13 13h4v4h-4z" fill="currentColor"/><path d="M10 1v18M1 10h18" stroke="currentColor" stroke-width="1.2"/></svg>
+        <svg viewBox="0 0 20 20"><path d="M10 2l3 3H7l3-3zM10 18l-3-3h6l-3 3zM2 10l3-3v6l-3-3zM18 10l-3 3V7l3 3z" fill="currentColor"/></svg>
       </button>
     </div>
 
@@ -71,7 +71,7 @@
         <input type="text" v-model="selectedControl.label" @input="saveConfig; markDirty()" />
       </label>
       <label>
-        CC Number
+        {{ selectedControl.type === 'xypad' ? 'CC X-Axis' : 'CC Number' }}
         <input type="number" v-model.number="selectedControl.cc" min="0" max="127" @input="saveConfig; markDirty()" />
       </label>
       <label v-if="selectedControl.type === 'xypad'">
