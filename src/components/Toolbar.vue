@@ -65,6 +65,23 @@
         </label>
 
         <label class="menu-label">
+          MIDI Input
+          <select
+            :value="selectedInputId"
+            @change="$emit('select-input', $event.target.value); menuOpen = false"
+          >
+            <option value="">None</option>
+            <option
+              v-for="input in midiInputs"
+              :key="input.id"
+              :value="input.id"
+            >
+              {{ input.name }}
+            </option>
+          </select>
+        </label>
+
+        <label class="menu-label">
           Mode
           <select
             :value="settings.mpeMode ? 'mpe' : 'midi'"
@@ -90,12 +107,14 @@ export default {
   props: {
     settings: { type: Object, required: true },
     midiOutputName: { type: String, default: null },
+    midiInputName: { type: String, default: null },
     midiOutputs: { type: Array, default: () => [] },
+    midiInputs: { type: Array, default: () => [] },
     settingsOpen: { type: Boolean, default: false },
     controlsOpen: { type: Boolean, default: false }
   },
 
-  emits: ['select-output', 'toggle-settings', 'toggle-controls', 'toggle-mpe', 'octave-up', 'octave-down', 'panic', 'accent-change'],
+  emits: ['select-output', 'select-input', 'toggle-settings', 'toggle-controls', 'toggle-mpe', 'octave-up', 'octave-down', 'panic', 'accent-change'],
 
   data() {
     return {
@@ -107,6 +126,12 @@ export default {
     selectedOutputId() {
       const match = this.midiOutputs.find(o => o.name === this.midiOutputName)
       return match ? match.id : ''
+    },
+
+    selectedInputId() {
+      return this.midiInputName
+        ? (this.midiInputs.find(i => i.name === this.midiInputName)?.id || '')
+        : ''
     },
 
     octaveLabel() {

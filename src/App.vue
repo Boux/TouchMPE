@@ -3,8 +3,10 @@
     <Toolbar
       :settings="settings"
       :midi-output-name="midiOutputName"
+      :midi-input-name="midiInputName"
       :midi-outputs="midiOutputs"
       :settings-open="settingsOpen"
+      :midi-inputs="midiInputs"
       :controls-open="controlConfig.visible"
       @select-output="onSelectOutput"
       @toggle-settings="settingsOpen = !settingsOpen"
@@ -13,6 +15,7 @@
       @preset-change="onPresetChange"
       @panic="onPanic"
       @toggle-mpe="onToggleMpe"
+      @select-input="onSelectInput"
       @toggle-controls="toggleControlPanel"
       @accent-change="onAccentChange"
     />
@@ -61,7 +64,9 @@ export default {
       controlConfig: loadControlConfig(),
       midiOutput: new MIDIOutput(),
       midiOutputs: [],
+      midiInputs: [],
       midiOutputName: null,
+      midiInputName: null,
       engine: null
     }
   },
@@ -70,8 +75,10 @@ export default {
     try {
       await this.midiOutput.init()
       this.midiOutputs = this.midiOutput.getOutputs()
-      this.midiOutput.onStateChange = (outputs) => {
+      this.midiInputs = this.midiOutput.getInputs()
+      this.midiOutput.onStateChange = (outputs, inputs) => {
         this.midiOutputs = outputs
+        this.midiInputs = inputs
       }
       if (this.midiOutputs.length > 0) {
         this.onSelectOutput(this.midiOutputs[0].id)
@@ -137,6 +144,28 @@ export default {
 
     onPanic() {
       if (this.engine) this.engine.panic()
+    },
+
+    onSelectInput(id) {
+      if (id) {
+        this.midiOutput.selectInput(id)
+        this.midiInputName = this.midiOutput.selectedInputName
+        this.midiOutput.onNoteOn = (note) => {
+          if (this.$refs.gridCanvas?.renderer) {
+            this.$refs.gridCanvas.renderer.externalNoteOn(note)
+          }
+        }
+        this.midiOutput.onNoteOff = (note) => {
+          if (this.$refs.gridCanvas?.renderer) {
+            this.$refs.gridCanvas.renderer.externalNoteOff(note)
+          }
+        }
+      } else {
+        this.midiOutput.selectInput(null)
+        this.midiInputName = null
+        this.midiOutput.onNoteOn = null
+        this.midiOutput.onNoteOff = null
+      }
     },
 
     onToggleMpe(mpeMode) {

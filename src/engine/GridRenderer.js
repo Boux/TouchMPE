@@ -25,6 +25,7 @@ export default class GridRenderer {
     this.dpr = window.devicePixelRatio || 1
     this.mpeMode = true
     this.accentColor = '#ff8800'
+    this.externalNotes = new Set() // notes held from MIDI input
 
     // Offscreen canvas for static pad layer
     this.staticCanvas = new OffscreenCanvas(1, 1)
@@ -54,6 +55,16 @@ export default class GridRenderer {
     })))
     this._computePadGeometry()
     this.staticDirty = true
+    this.dynamicDirty = true
+  }
+
+  externalNoteOn(note) {
+    this.externalNotes.add(note)
+    this.dynamicDirty = true
+  }
+
+  externalNoteOff(note) {
+    this.externalNotes.delete(note)
     this.dynamicDirty = true
   }
 
@@ -112,6 +123,11 @@ export default class GridRenderer {
     // Composite: static background
     ctx.clearRect(0, 0, w, h)
     ctx.drawImage(this.staticCanvas, 0, 0)
+
+    // Draw external MIDI input highlights
+    if (this.externalNotes.size > 0) {
+      this._drawExternalNotes(ctx)
+    }
 
     // Draw dynamic touch overlays on top
     if (this.hasActiveTouches) {
@@ -183,6 +199,37 @@ export default class GridRenderer {
           ctx.font = `${octFontSize}px -apple-system, sans-serif`
           ctx.fillText(octave, px + pw / 2, py + ph / 2 + fontSize * 0.55)
         }
+      }
+    }
+  }
+
+  // --- External MIDI input highlights ---
+
+  _drawExternalNotes(ctx) {
+    const dpr = this.dpr
+    const { r: ar, g: ag, b: ab } = hexToRgb(this.accentColor)
+
+    for (let r = 0; r < this.pads.length; r++) {
+      for (let c = 0; c < this.pads[r].length; c++) {
+        const pad = this.pads[r][c]
+        if (!pad) continue
+        if (!this.externalNotes.has(pad.note)) continue
+
+        const px = pad.x * dpr
+        const py = pad.y * dpr
+        const pw = pad.w * dpr
+        const ph = pad.h * dpr
+
+        // Soft glow fill
+        ctx.beginPath()
+        ctx.rect(px, py, pw, ph)
+        ctx.fillStyle = `rgba(${ar}, ${ag}, ${ab}, 0.2)`
+        ctx.fill()
+
+        // Border
+        ctx.strokeStyle = `rgba(${ar}, ${ag}, ${ab}, 0.5)`
+        ctx.lineWidth = 1.5 * dpr
+        ctx.stroke()
       }
     }
   }
