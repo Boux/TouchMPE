@@ -58,3 +58,26 @@ Tap **Settings** to adjust pad size, root note, row/column offsets, scale, press
 ## MPE setup
 
 Default pitch bend range is **48 semitones**. Match this in your synth's MPE settings.
+
+## Known issue: USB MIDI byte corruption (ghost sustain)
+
+When using Chrome on Android over USB MIDI, high-throughput MIDI streams can cause **byte-level corruption** in the USB MIDI transport layer. Specifically, the CC number byte of CC 74 (timbre/slide) messages — `0x4A` — gets corrupted to `0x40`, which is **CC 64 (sustain pedal)**. This activates sustain on the affected MPE member channel, causing notes to ring out forever even after releasing them.
+
+### Symptoms
+
+- Notes sound "stuck" — they sustain indefinitely after releasing your finger
+- The note visually releases correctly in TouchMPE (noteOff is sent)
+- Happens only in MPE mode, not MIDI mode (MIDI mode self-heals since all notes share one channel)
+- More likely with many simultaneous touches and fast sliding
+- The panic button may not help (CC 123 All Notes Off respects sustain pedal state)
+
+### Cause
+
+The corruption occurs **outside the application** — between Chrome's Web MIDI `send()` call and the Linux ALSA MIDI driver receiving the bytes. TouchMPE's own debug interceptor confirms clean bytes leaving the app, but a MIDI monitor on the receiving end shows corrupted CC 64 messages arriving. The corruption is triggered by high message throughput overwhelming the USB MIDI transport.
+
+### Mitigations applied
+
+1. **Message deduplication** — pitch bend, timbre (CC 74), and pressure values are only sent when they actually change, dramatically reducing redundant messages during multitouch
+2. **Single `send()` per frame** — all pending MIDI bytes are flushed in one `send()` call instead of individual calls per message, reducing USB transfer overhead
+3. **Pressure disabled** — aftertouch/pressure messages are disabled by default since they are unreliable on touch devices and add significant throughput
+4. **Improved panic** — the panic button now sends CC 120 (All Sound Off) + CC 64 value 0 (sustain off) + CC 123 (All Notes Off) on all channels, which properly clears stuck sustain state
