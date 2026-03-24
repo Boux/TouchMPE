@@ -60,6 +60,9 @@ export default {
       })
       this.renderer.setGrid(grid)
       this.renderer.mpeMode = settings.mpeMode !== false
+      this.renderer.accentColor = settings.accentColor || '#ff8800'
+      this.renderer.staticDirty = true
+      this.renderer.dynamicDirty = true
       if (this.engine) {
         this.engine.applySettings(settings)
       }

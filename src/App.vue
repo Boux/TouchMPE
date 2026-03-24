@@ -14,6 +14,7 @@
       @panic="onPanic"
       @toggle-mpe="onToggleMpe"
       @toggle-controls="toggleControlPanel"
+      @accent-change="onAccentChange"
     />
     <div class="main-area" :class="'dock-' + controlConfig.dockSide" :data-cc-visible="controlConfig.visible">
       <GridCanvas
@@ -26,6 +27,7 @@
         v-if="controlConfig.visible"
         :config="controlConfig"
         :engine="engine"
+        :accent-color="settings.accentColor || '#ff8800'"
         @update="onControlConfigUpdate"
       />
     </div>
@@ -85,6 +87,8 @@ export default {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.engine) this.engine.panic()
     })
+
+    this._applyAccentColor(this.settings.accentColor)
   },
 
   methods: {
@@ -147,6 +151,16 @@ export default {
     onControlConfigUpdate(config) {
       Object.assign(this.controlConfig, config)
       saveControlConfig(this.controlConfig)
+    },
+
+    onAccentChange(color) {
+      const resolved = color || '#ff8800'
+      this._applyAccentColor(resolved)
+      this.onSettingsUpdate({ ...this.settings, accentColor: resolved })
+    },
+
+    _applyAccentColor(color) {
+      document.documentElement.style.setProperty('--accent', color)
     }
   }
 }
@@ -157,6 +171,10 @@ export default {
   margin: 0
   padding: 0
   box-sizing: border-box
+
+\:root
+  --accent-default: #ff8800
+  --accent: var(--accent-default)
 
 html, body
   width: 100%

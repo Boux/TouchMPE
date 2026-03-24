@@ -264,7 +264,7 @@ export default {
 
   h2
     font-size: 16px
-    color: #ff8800
+    color: var(--accent)
 
 .reset-btn
   background: #333
@@ -350,7 +350,7 @@ export default {
 
   input[type="range"]
     width: 100px
-    accent-color: #ff8800
+    accent-color: var(--accent)
     height: 32px
 
   .slider-value

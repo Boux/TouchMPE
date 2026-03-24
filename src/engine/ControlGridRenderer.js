@@ -2,9 +2,26 @@ const BG = '#1a1a1a'
 const CELL_BG = '#222'
 const CTRL_BG = '#2a2a2a'
 const CTRL_BORDER = '#3a3a3a'
-const ORANGE = '#ff8800'
+const ACCENT_DEFAULT = '#ff8800'
 const TEXT_DIM = '#666'
 const TEXT_MED = '#999'
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return { r, g, b }
+}
+
+function lighten(hex, amt) {
+  const { r, g, b } = hexToRgb(hex)
+  return `rgb(${Math.min(255, r + amt)}, ${Math.min(255, g + amt)}, ${Math.min(255, b + amt)})`
+}
+
+function darken(hex, amt) {
+  const { r, g, b } = hexToRgb(hex)
+  return `rgb(${Math.max(0, r - amt)}, ${Math.max(0, g - amt)}, ${Math.max(0, b - amt)})`
+}
 
 export default class ControlGridRenderer {
   constructor(canvas) {
@@ -37,6 +54,7 @@ export default class ControlGridRenderer {
 
     const { cellSize, gap, panX, panY, controls, controlValues, xyValues,
             selectedCtrl, dragStart, dragEnd, occupiedSet } = state
+    this._accent = state.accentColor || ACCENT_DEFAULT
     const ctx = this.ctx
     const dpr = this.dpr
     const step = cellSize + gap
@@ -69,8 +87,9 @@ export default class ControlGridRenderer {
       const c2 = Math.max(dragStart.col, dragEnd.col)
       const r1 = Math.min(dragStart.row, dragEnd.row)
       const r2 = Math.max(dragStart.row, dragEnd.row)
-      ctx.fillStyle = 'rgba(255, 136, 0, 0.25)'
-      ctx.strokeStyle = ORANGE
+      const { r: dr, g: dg, b: db } = hexToRgb(this._accent)
+      ctx.fillStyle = `rgba(${dr}, ${dg}, ${db}, 0.25)`
+      ctx.strokeStyle = this._accent
       ctx.lineWidth = 1.5
       for (let r = r1; r <= r2; r++) {
         for (let c = c1; c <= c2; c++) {
@@ -115,10 +134,10 @@ export default class ControlGridRenderer {
 
       // Selection border + glow
       if (isSelected) {
-        ctx.strokeStyle = ORANGE
+        ctx.strokeStyle = this._accent
         ctx.lineWidth = 2
         ctx.strokeRect(x, y, w, h)
-        ctx.shadowColor = ORANGE
+        ctx.shadowColor = this._accent
         ctx.shadowBlur = 8
         ctx.strokeRect(x, y, w, h)
         ctx.shadowBlur = 0
@@ -183,10 +202,10 @@ export default class ControlGridRenderer {
     if (val > 0) {
       ctx.beginPath()
       ctx.arc(cx, cy, radius, startAngle, valAngle)
-      ctx.strokeStyle = ORANGE
+      ctx.strokeStyle = this._accent
       ctx.lineWidth = 3
       ctx.lineCap = 'butt'
-      ctx.shadowColor = ORANGE
+      ctx.shadowColor = this._accent
       ctx.shadowBlur = 5
       ctx.stroke()
       ctx.shadowBlur = 0
@@ -212,9 +231,9 @@ export default class ControlGridRenderer {
     // Pointer notch — a small line from center outward
     const notchInner = capR * 0.2
     const notchOuter = capR * 0.9
-    ctx.shadowColor = ORANGE
+    ctx.shadowColor = this._accent
     ctx.shadowBlur = 3
-    ctx.strokeStyle = ORANGE
+    ctx.strokeStyle = this._accent
     ctx.lineWidth = 2
     ctx.lineCap = 'round'
     ctx.beginPath()
@@ -246,16 +265,16 @@ export default class ControlGridRenderer {
 
       if (horizontal) {
         const fillW = (val / 127) * trackW
-        ctx.shadowColor = ORANGE
+        ctx.shadowColor = this._accent
         ctx.shadowBlur = 6
-        ctx.fillStyle = ORANGE
+        ctx.fillStyle = this._accent
         ctx.fillRect(sx, sy, fillW, stripH || 2)
         ctx.shadowBlur = 0
       } else {
         const fillH = (val / 127) * trackH
-        ctx.shadowColor = ORANGE
+        ctx.shadowColor = this._accent
         ctx.shadowBlur = 6
-        ctx.fillStyle = ORANGE
+        ctx.fillStyle = this._accent
         ctx.fillRect(sx, sy + trackH - fillH, stripW || 2, fillH)
         ctx.shadowBlur = 0
       }
@@ -352,9 +371,9 @@ export default class ControlGridRenderer {
       ctx.strokeRect(fx, fy, strip, ah)
       if (valY > 0) {
         const yFillH = (valY / 127) * ah
-        ctx.shadowColor = ORANGE
+        ctx.shadowColor = this._accent
         ctx.shadowBlur = 5
-        ctx.fillStyle = ORANGE
+        ctx.fillStyle = this._accent
         ctx.fillRect(fx + strip / 2 - 1, fy + ah - yFillH, 2, yFillH)
         ctx.shadowBlur = 0
       }
@@ -367,9 +386,9 @@ export default class ControlGridRenderer {
       ctx.strokeRect(bfx, bfy, bfw, strip)
       if (valX > 0) {
         const xFillW = (valX / 127) * bfw
-        ctx.shadowColor = ORANGE
+        ctx.shadowColor = this._accent
         ctx.shadowBlur = 5
-        ctx.fillStyle = ORANGE
+        ctx.fillStyle = this._accent
         ctx.fillRect(bfx, bfy + strip / 2 - 1, xFillW, 2)
         ctx.shadowBlur = 0
       }
@@ -409,7 +428,8 @@ export default class ControlGridRenderer {
     // Crosshair lines from dot to edges
     const dotX = ax + (valX / 127) * aw
     const dotY = ay + (1 - valY / 127) * ah
-    ctx.strokeStyle = 'rgba(255, 136, 0, 0.25)'
+    const { r: cr, g: cg, b: cb } = hexToRgb(this._accent)
+    ctx.strokeStyle = `rgba(${cr}, ${cg}, ${cb}, 0.25)`
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.moveTo(dotX, ay)
@@ -421,7 +441,7 @@ export default class ControlGridRenderer {
     // Dot
     ctx.beginPath()
     ctx.arc(dotX, dotY, 5, 0, Math.PI * 2)
-    ctx.fillStyle = ORANGE
+    ctx.fillStyle = this._accent
     ctx.fill()
 
     // Label inside pad (top-left)
@@ -488,11 +508,11 @@ export default class ControlGridRenderer {
     ctx.fillRect(ledX - 1, ledY - 1, ledW + 2, ledH + 2)
 
     // LED
-    ctx.fillStyle = on ? ORANGE : '#2a2a2a'
+    ctx.fillStyle = on ? this._accent : '#2a2a2a'
     ctx.fillRect(ledX, ledY, ledW, ledH)
 
     if (on) {
-      ctx.shadowColor = ORANGE
+      ctx.shadowColor = this._accent
       ctx.shadowBlur = 6
       ctx.fillRect(ledX, ledY, ledW, ledH)
       ctx.shadowBlur = 0

@@ -1,6 +1,20 @@
 <template>
   <div class="toolbar">
-    <img src="/icon.svg" class="toolbar-logo" alt="TouchMPE" />
+    <svg class="toolbar-logo" viewBox="0 0 512 512" @click="$refs.colorPicker.click()" @contextmenu.prevent="$emit('accent-change', null)">
+      <rect width="512" height="512" rx="64" fill="#1a1a1a"/>
+      <rect x="48" y="48" width="120" height="120" rx="16" :fill="settings.accentColor"/>
+      <rect x="196" y="48" width="120" height="120" rx="16" :fill="settings.accentColor" opacity="0.8"/>
+      <rect x="344" y="48" width="120" height="120" rx="16" :fill="settings.accentColor" opacity="0.6"/>
+      <rect x="48" y="196" width="120" height="120" rx="16" :fill="settings.accentColor" opacity="0.8"/>
+      <rect x="196" y="196" width="120" height="120" rx="16" :fill="settings.accentColor"/>
+      <rect x="344" y="196" width="120" height="120" rx="16" :fill="settings.accentColor" opacity="0.8"/>
+      <rect x="48" y="344" width="120" height="120" rx="16" :fill="settings.accentColor" opacity="0.6"/>
+      <rect x="196" y="344" width="120" height="120" rx="16" :fill="settings.accentColor" opacity="0.8"/>
+      <rect x="344" y="344" width="120" height="120" rx="16" :fill="settings.accentColor"/>
+    </svg>
+    <input ref="colorPicker" type="color" :value="settings.accentColor"
+      @input="$emit('accent-change', $event.target.value)"
+      style="display:none" />
 
     <div class="toolbar-inline">
       <button class="toolbar-btn small" @click="$emit('octave-down')">-</button>
@@ -81,7 +95,7 @@ export default {
     controlsOpen: { type: Boolean, default: false }
   },
 
-  emits: ['select-output', 'toggle-settings', 'toggle-controls', 'toggle-mpe', 'octave-up', 'octave-down', 'panic'],
+  emits: ['select-output', 'toggle-settings', 'toggle-controls', 'toggle-mpe', 'octave-up', 'octave-down', 'panic', 'accent-change'],
 
   data() {
     return {
@@ -120,11 +134,12 @@ export default {
   width: 20px
   height: 20px
   border-radius: 4px
+  cursor: pointer
 
 .toolbar-title
   font-size: 13px
   font-weight: 600
-  color: #ff8800
+  color: var(--accent)
 
 .toolbar-inline
   display: flex
@@ -166,9 +181,9 @@ export default {
     background: #444
 
   &.active
-    background: #ff8800
+    background: var(--accent)
     color: #000
-    border-color: #ff8800
+    border-color: var(--accent)
 
   &.small
     padding: 3px 6px

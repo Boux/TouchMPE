@@ -96,7 +96,8 @@ export default {
 
   props: {
     config: { type: Object, required: true },
-    engine: { type: Object, default: null }
+    engine: { type: Object, default: null },
+    accentColor: { type: String, default: '#ff8800' }
   },
 
   emits: ['update'],
@@ -228,6 +229,9 @@ export default {
       if (this.input) this.input.controls = this.config.controls
       this.markDirty()
     },
+    accentColor() {
+      this.markDirty()
+    },
     locked() {
       if (this.input) this.input.locked = this.locked
     },
@@ -255,7 +259,8 @@ export default {
           selectedCtrl: this.selectedCtrl,
           dragStart: this.dragStart,
           dragEnd: this.dragEnd,
-          occupiedSet: this.occupiedSet
+          occupiedSet: this.occupiedSet,
+          accentColor: this.accentColor
         })
         this._animId = requestAnimationFrame(loop)
       }
@@ -529,7 +534,7 @@ export default {
   input[type="range"]
     flex: 1
     min-width: 40px
-    accent-color: #ff8800
+    accent-color: var(--accent)
     height: 24px
 
 .layout-toggle
@@ -551,9 +556,9 @@ export default {
     color: #ccc
 
   &.active
-    background: #ff8800
+    background: var(--accent)
     color: #000
-    border-color: #ff8800
+    border-color: var(--accent)
 
   svg
     width: 16px
@@ -661,9 +666,9 @@ export default {
 
 .layout-drag-area
   flex: 1
-  background: rgba(255, 136, 0, 0.12)
+  background: color-mix(in srgb, var(--accent) 12%, transparent)
   backdrop-filter: blur(4px)
-  border: 3px dashed #ff8800
+  border: 3px dashed var(--accent)
   cursor: grab
   display: flex
   align-items: center
@@ -671,12 +676,12 @@ export default {
 
   .is-dragging &
     cursor: grabbing
-    background: rgba(255, 136, 0, 0.25)
+    background: color-mix(in srgb, var(--accent) 25%, transparent)
 
 .layout-overlay-text
   font-size: 16px
   font-weight: 600
-  color: #ff8800
+  color: var(--accent)
   text-transform: uppercase
   letter-spacing: 2px
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6)
@@ -688,7 +693,7 @@ export default {
 
 .layout-done-btn
   pointer-events: auto
-  background: #ff8800
+  background: var(--accent)
   color: #000
   border: none
   border-radius: 6px
@@ -699,7 +704,7 @@ export default {
 
 .layout-resize-edge
   background: #2a2a2a
-  border: 2px dotted #ff8800
+  border: 2px dotted var(--accent)
   display: flex
   align-items: center
   justify-content: center
@@ -708,7 +713,7 @@ export default {
   &::after
     content: ''
     border-radius: 2px
-    background: #ff8800
+    background: var(--accent)
     opacity: 0.6
 
   .dock-right &, .dock-left &

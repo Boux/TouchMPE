@@ -8,6 +8,13 @@ import { noteNameShort, isBlackKey } from '../layout/NoteUtils.js'
  *   - Dynamic layer (main canvas): touch feedback (glow, bend/timbre indicators)
  *     Redrawn per frame when touches are active.
  */
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return { r, g, b }
+}
+
 export default class GridRenderer {
   constructor(canvas) {
     this.canvas = canvas
@@ -17,6 +24,7 @@ export default class GridRenderer {
     this.gap = 3
     this.dpr = window.devicePixelRatio || 1
     this.mpeMode = true
+    this.accentColor = '#ff8800'
 
     // Offscreen canvas for static pad layer
     this.staticCanvas = new OffscreenCanvas(1, 1)
@@ -153,7 +161,8 @@ export default class GridRenderer {
 
         // Subtle border on C notes for octave orientation
         if (cell.note % 12 === 0 && cell.inScale) {
-          ctx.strokeStyle = 'rgba(255, 136, 0, 0.3)'
+          const { r: ar, g: ag, b: ab } = hexToRgb(this.accentColor)
+          ctx.strokeStyle = `rgba(${ar}, ${ag}, ${ab}, 0.3)`
           ctx.lineWidth = 1.5 * dpr
           ctx.stroke()
         }
@@ -202,14 +211,18 @@ export default class GridRenderer {
         const padCenterY = py + ph / 2
 
         // Glowing pad fill
+        const { r: ar, g: ag, b: ab } = hexToRgb(this.accentColor)
         const alpha = 0.35 + ts.pressure * 0.5
         ctx.beginPath()
         ctx.rect(px, py, pw, ph)
-        ctx.fillStyle = `rgba(255, 136, 0, ${alpha})`
+        ctx.fillStyle = `rgba(${ar}, ${ag}, ${ab}, ${alpha})`
         ctx.fill()
 
         // Glow border
-        ctx.strokeStyle = `rgba(255, 170, 50, ${0.5 + ts.pressure * 0.4})`
+        const lr = Math.min(255, ar + 40)
+        const lg = Math.min(255, ag + 40)
+        const lb = Math.min(255, ab + 40)
+        ctx.strokeStyle = `rgba(${lr}, ${lg}, ${lb}, ${0.5 + ts.pressure * 0.4})`
         ctx.lineWidth = 1.5 * dpr
         ctx.stroke()
 

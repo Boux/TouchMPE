@@ -17,6 +17,9 @@ const DEFAULTS = {
   pitchBendRange: 48,
   memberChannels: 15,
 
+  // Appearance
+  accentColor: '#ff8800',
+
   // Touch
   noteOnQuantize: true,
   slidePitchMode: 'continuous',
