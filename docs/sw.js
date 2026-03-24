@@ -1,4 +1,4 @@
-const CACHE_NAME = 'touchmpe-v2'
+const CACHE_NAME = 'touchmpe-v3'
 
 const APP_SHELL = [
   '/TouchMPE/',
