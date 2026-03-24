@@ -169,56 +169,161 @@ export default class ControlGridRenderer {
     const startAngle = 0.75 * Math.PI
     const endAngle = 2.25 * Math.PI
     const valAngle = startAngle + (val / 127) * (endAngle - startAngle)
+    const outerR = radius
+    const innerR = radius * 0.6
 
-    // Track
+    // Recessed ring behind knob
     ctx.beginPath()
-    ctx.arc(cx, cy, radius, startAngle, endAngle)
-    ctx.strokeStyle = '#444'
-    ctx.lineWidth = Math.max(4, radius * 0.25)
-    ctx.lineCap = 'round'
-    ctx.stroke()
-
-    // Value arc
-    if (val > 0) {
-      ctx.beginPath()
-      ctx.arc(cx, cy, radius, startAngle, valAngle)
-      ctx.strokeStyle = ORANGE
-      ctx.stroke()
-    }
-
-    // Dot at value position
-    const dotX = cx + Math.cos(valAngle) * radius
-    const dotY = cy + Math.sin(valAngle) * radius
-    ctx.beginPath()
-    ctx.arc(dotX, dotY, Math.max(2, radius * 0.1), 0, Math.PI * 2)
-    ctx.fillStyle = ORANGE
+    ctx.arc(cx, cy, outerR + 3, 0, Math.PI * 2)
+    ctx.fillStyle = '#1a1a1a'
     ctx.fill()
 
+    // Knob body — raised circle with gradient
+    const knobGrad = ctx.createRadialGradient(cx - innerR * 0.3, cy - innerR * 0.3, 0, cx, cy, innerR)
+    knobGrad.addColorStop(0, '#555')
+    knobGrad.addColorStop(1, '#333')
+    ctx.beginPath()
+    ctx.arc(cx, cy, innerR, 0, Math.PI * 2)
+    ctx.fillStyle = knobGrad
+    ctx.fill()
+
+    // Knob edge bevel
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.arc(cx, cy, innerR - 0.5, Math.PI * 1.0, Math.PI * 1.85)
+    ctx.stroke()
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'
+    ctx.beginPath()
+    ctx.arc(cx, cy, innerR - 0.5, Math.PI * 0.0, Math.PI * 0.85)
+    ctx.stroke()
+
+    // Position indicator line on knob
+    const lineInner = innerR * 0.3
+    const lineOuter = innerR * 0.85
+    const lx1 = cx + Math.cos(valAngle) * lineInner
+    const ly1 = cy + Math.sin(valAngle) * lineInner
+    const lx2 = cx + Math.cos(valAngle) * lineOuter
+    const ly2 = cy + Math.sin(valAngle) * lineOuter
+    ctx.strokeStyle = ORANGE
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(lx1, ly1)
+    ctx.lineTo(lx2, ly2)
+    ctx.stroke()
     ctx.lineCap = 'butt'
+
+    // Scale marks in the recessed ring
+    const markR = outerR + 1
+    ctx.strokeStyle = '#555'
+    ctx.lineWidth = 1
+    for (let i = 0; i <= 10; i++) {
+      const a = startAngle + (i / 10) * (endAngle - startAngle)
+      const mx1 = cx + Math.cos(a) * (markR - 2)
+      const my1 = cy + Math.sin(a) * (markR - 2)
+      const mx2 = cx + Math.cos(a) * (markR + 1)
+      const my2 = cy + Math.sin(a) * (markR + 1)
+      ctx.beginPath()
+      ctx.moveTo(mx1, my1)
+      ctx.lineTo(mx2, my2)
+      ctx.stroke()
+    }
   }
 
   _drawFader(ctx, x, y, w, h, val, horizontal) {
-    const trackW = horizontal ? w * 0.85 : w * 0.45
-    const trackH = horizontal ? h * 0.45 : h * 0.8
+    const trackW = horizontal ? w * 0.85 : 8
+    const trackH = horizontal ? 8 : h * 0.75
     const tx = x + (w - trackW) / 2
     const ty = y + (h - trackH) / 2
 
-    // Track background with border
-    ctx.fillStyle = '#333'
+    // Recessed channel
+    ctx.fillStyle = '#181818'
+    ctx.fillRect(tx - 1, ty - 1, trackW + 2, trackH + 2)
+    ctx.fillStyle = '#222'
     ctx.fillRect(tx, ty, trackW, trackH)
-    ctx.strokeStyle = '#444'
-    ctx.lineWidth = 1
-    ctx.strokeRect(tx, ty, trackW, trackH)
 
-    // Fill
-    ctx.fillStyle = ORANGE
-    if (horizontal) {
-      const fillW = (val / 127) * trackW
-      ctx.fillRect(tx, ty, fillW, trackH)
-    } else {
-      const fillH = (val / 127) * trackH
-      ctx.fillRect(tx, ty + trackH - fillH, trackW, fillH)
+    // Orange fill strip (thin, centered, with glow)
+    if (val > 0) {
+      const stripW = horizontal ? 0 : 2
+      const stripH = horizontal ? 2 : 0
+      const sx = horizontal ? tx : tx + trackW / 2 - stripW / 2
+      const sy = horizontal ? ty + trackH / 2 - stripH / 2 : ty
+
+      if (horizontal) {
+        const fillW = (val / 127) * trackW
+        ctx.shadowColor = ORANGE
+        ctx.shadowBlur = 6
+        ctx.fillStyle = ORANGE
+        ctx.fillRect(sx, sy, fillW, stripH || 2)
+        ctx.shadowBlur = 0
+      } else {
+        const fillH = (val / 127) * trackH
+        ctx.shadowColor = ORANGE
+        ctx.shadowBlur = 6
+        ctx.fillStyle = ORANGE
+        ctx.fillRect(sx, sy + trackH - fillH, stripW || 2, fillH)
+        ctx.shadowBlur = 0
+      }
     }
+
+    // Thumb/handle
+    const thumbSize = horizontal ? 6 : trackW + 10
+    const thumbThick = horizontal ? trackH + 10 : 6
+
+    let thumbX, thumbY
+    if (horizontal) {
+      thumbX = tx + (val / 127) * trackW - thumbSize / 2
+      thumbY = ty + trackH / 2 - thumbThick / 2
+    } else {
+      thumbX = tx + trackW / 2 - thumbSize / 2
+      thumbY = ty + trackH * (1 - val / 127) - thumbThick / 2
+    }
+
+    // Thumb shadow
+    ctx.fillStyle = '#181818'
+    ctx.fillRect(thumbX, thumbY + 2, thumbSize, thumbThick)
+
+    // Thumb body
+    const thumbGrad = horizontal
+      ? ctx.createLinearGradient(thumbX, thumbY, thumbX, thumbY + thumbThick)
+      : ctx.createLinearGradient(thumbX, thumbY, thumbX + thumbSize, thumbY)
+    thumbGrad.addColorStop(0, '#5a5a5a')
+    thumbGrad.addColorStop(0.5, '#4a4a4a')
+    thumbGrad.addColorStop(1, '#3a3a3a')
+    ctx.fillStyle = thumbGrad
+    ctx.fillRect(thumbX, thumbY, thumbSize, thumbThick)
+
+    // Thumb grip line
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'
+    ctx.lineWidth = 1
+    if (horizontal) {
+      const mx = thumbX + thumbSize / 2 + 0.5
+      ctx.beginPath()
+      ctx.moveTo(mx, thumbY + 3)
+      ctx.lineTo(mx, thumbY + thumbThick - 3)
+      ctx.stroke()
+    } else {
+      const my = thumbY + thumbThick / 2 + 0.5
+      ctx.beginPath()
+      ctx.moveTo(thumbX + 3, my)
+      ctx.lineTo(thumbX + thumbSize - 3, my)
+      ctx.stroke()
+    }
+
+    // Thumb bevel
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'
+    ctx.beginPath()
+    ctx.moveTo(thumbX + 0.5, thumbY + thumbThick)
+    ctx.lineTo(thumbX + 0.5, thumbY + 0.5)
+    ctx.lineTo(thumbX + thumbSize, thumbY + 0.5)
+    ctx.stroke()
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'
+    ctx.beginPath()
+    ctx.moveTo(thumbX + thumbSize - 0.5, thumbY)
+    ctx.lineTo(thumbX + thumbSize - 0.5, thumbY + thumbThick - 0.5)
+    ctx.lineTo(thumbX, thumbY + thumbThick - 0.5)
+    ctx.stroke()
   }
 
   _drawXYPad(ctx, x, y, w, h, valX, valY, ctrl) {
@@ -246,24 +351,34 @@ export default class ControlGridRenderer {
       ah = fh - strip - faderGap
 
       // --- Y-axis fader (left) ---
-      ctx.fillStyle = '#333'
+      ctx.fillStyle = '#222'
       ctx.fillRect(fx, fy, strip, ah)
-      ctx.strokeStyle = '#444'
+      ctx.strokeStyle = '#333'
       ctx.lineWidth = 1
       ctx.strokeRect(fx, fy, strip, ah)
-      const yFillH = (valY / 127) * ah
-      ctx.fillStyle = ORANGE
-      ctx.fillRect(fx, fy + ah - yFillH, strip, yFillH)
+      if (valY > 0) {
+        const yFillH = (valY / 127) * ah
+        ctx.shadowColor = ORANGE
+        ctx.shadowBlur = 5
+        ctx.fillStyle = ORANGE
+        ctx.fillRect(fx + strip / 2 - 1, fy + ah - yFillH, 2, yFillH)
+        ctx.shadowBlur = 0
+      }
 
       // --- X-axis fader (bottom) ---
-      ctx.fillStyle = '#333'
+      ctx.fillStyle = '#222'
       ctx.fillRect(bfx, bfy, bfw, strip)
-      ctx.strokeStyle = '#444'
+      ctx.strokeStyle = '#333'
       ctx.lineWidth = 1
       ctx.strokeRect(bfx, bfy, bfw, strip)
-      const xFillW = (valX / 127) * bfw
-      ctx.fillStyle = ORANGE
-      ctx.fillRect(bfx, bfy, xFillW, strip)
+      if (valX > 0) {
+        const xFillW = (valX / 127) * bfw
+        ctx.shadowColor = ORANGE
+        ctx.shadowBlur = 5
+        ctx.fillStyle = ORANGE
+        ctx.fillRect(bfx, bfy + strip / 2 - 1, xFillW, 2)
+        ctx.shadowBlur = 0
+      }
     } else {
       ax = x + pad
       ay = y + topPad
@@ -271,12 +386,25 @@ export default class ControlGridRenderer {
       ah = h - topPad - bottomPad
     }
 
-    // --- Main pad ---
-    ctx.fillStyle = '#333'
+    // --- Main pad (recessed) ---
+    ctx.fillStyle = '#1e1e1e'
+    ctx.fillRect(ax - 1, ay - 1, aw + 2, ah + 2)
+    ctx.fillStyle = '#282828'
     ctx.fillRect(ax, ay, aw, ah)
-    ctx.strokeStyle = '#444'
+    // Inner bevel — dark top/left, light bottom/right (recessed)
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'
     ctx.lineWidth = 1
-    ctx.strokeRect(ax, ay, aw, ah)
+    ctx.beginPath()
+    ctx.moveTo(ax + 0.5, ay + ah)
+    ctx.lineTo(ax + 0.5, ay + 0.5)
+    ctx.lineTo(ax + aw, ay + 0.5)
+    ctx.stroke()
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)'
+    ctx.beginPath()
+    ctx.moveTo(ax + aw - 0.5, ay)
+    ctx.lineTo(ax + aw - 0.5, ay + ah - 0.5)
+    ctx.lineTo(ax, ay + ah - 0.5)
+    ctx.stroke()
 
     // Dotted grid lines
     ctx.setLineDash([1, 4])
