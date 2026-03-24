@@ -141,7 +141,7 @@ export default class ControlGridRenderer {
           break
         case 'button':
         case 'toggle':
-          this._drawButton(ctx, cx, cy, minDim * 0.25, val > 0)
+          this._drawButton(ctx, x, y, w, h, val > 0)
           break
       }
 
@@ -153,15 +153,17 @@ export default class ControlGridRenderer {
       ctx.textBaseline = 'top'
       ctx.fillText(label, cx, y + 6, w - 12)
 
-      // Value
-      ctx.fillStyle = TEXT_DIM
-      ctx.font = `600 ${Math.min(11, minDim * 0.16)}px -apple-system, sans-serif`
-      ctx.textBaseline = 'bottom'
-      if (ctrl.type === 'xypad') {
-        const valY = xyValues[ctrl.id] ?? 64
-        ctx.fillText(`${Math.round(val)}, ${Math.round(valY)}`, cx, y + h - 5, w - 12)
-      } else {
-        ctx.fillText(Math.round(val).toString(), cx, y + h - 5, w - 12)
+      // Value (skip for buttons/toggles)
+      if (ctrl.type !== 'button' && ctrl.type !== 'toggle') {
+        ctx.fillStyle = TEXT_DIM
+        ctx.font = `600 ${Math.min(11, minDim * 0.16)}px -apple-system, sans-serif`
+        ctx.textBaseline = 'bottom'
+        if (ctrl.type === 'xypad') {
+          const valY = xyValues[ctrl.id] ?? 64
+          ctx.fillText(`${Math.round(val)}, ${Math.round(valY)}`, cx, y + h - 5, w - 12)
+        } else {
+          ctx.fillText(Math.round(val).toString(), cx, y + h - 5, w - 12)
+        }
       }
     }
   }
@@ -267,18 +269,62 @@ export default class ControlGridRenderer {
     ctx.fill()
   }
 
-  _drawButton(ctx, cx, cy, radius, on) {
+  _drawButton(ctx, x, y, w, h, on) {
+    const mx = 10
+    const bx = x + mx
+    const by = y + mx + 12
+    const bw = w - mx * 2
+    const bh = h - mx * 2 - 16
+    const travel = 3
+    const faceY = on ? by + travel : by
+
+    // Pit — only visible at the bottom beneath the face
+    ctx.fillStyle = '#181818'
+    ctx.fillRect(bx, by + bh, bw, travel)
+
+    // Button face — subtle gradient
+    const faceGrad = ctx.createLinearGradient(bx, faceY, bx, faceY + bh)
+    faceGrad.addColorStop(0, on ? '#3a3a3a' : '#4a4a4a')
+    faceGrad.addColorStop(1, on ? '#303030' : '#3c3c3c')
+    ctx.fillStyle = faceGrad
+    ctx.fillRect(bx, faceY, bw, bh)
+
+    // Bevel — top/left highlight
+    ctx.strokeStyle = on ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.1)'
+    ctx.lineWidth = 1
     ctx.beginPath()
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2)
-    ctx.fillStyle = on ? ORANGE : '#444'
-    ctx.fill()
+    ctx.moveTo(bx + 0.5, faceY + bh)
+    ctx.lineTo(bx + 0.5, faceY + 0.5)
+    ctx.lineTo(bx + bw, faceY + 0.5)
+    ctx.stroke()
+
+    // Bevel — bottom/right shadow
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'
+    ctx.beginPath()
+    ctx.moveTo(bx + bw - 0.5, faceY)
+    ctx.lineTo(bx + bw - 0.5, faceY + bh - 0.5)
+    ctx.lineTo(bx, faceY + bh - 0.5)
+    ctx.stroke()
+
+    // LED strip — small bar near the top of the button face
+    const ledH = Math.max(3, Math.min(5, bh * 0.08))
+    const ledMx = 6
+    const ledX = bx + ledMx
+    const ledY = faceY + 6
+    const ledW = bw - ledMx * 2
+
+    // LED recess
+    ctx.fillStyle = '#1a1a1a'
+    ctx.fillRect(ledX - 1, ledY - 1, ledW + 2, ledH + 2)
+
+    // LED
+    ctx.fillStyle = on ? ORANGE : '#2a2a2a'
+    ctx.fillRect(ledX, ledY, ledW, ledH)
 
     if (on) {
       ctx.shadowColor = ORANGE
-      ctx.shadowBlur = 8
-      ctx.beginPath()
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2)
-      ctx.fill()
+      ctx.shadowBlur = 6
+      ctx.fillRect(ledX, ledY, ledW, ledH)
       ctx.shadowBlur = 0
     }
   }
