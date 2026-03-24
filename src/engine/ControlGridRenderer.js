@@ -169,66 +169,60 @@ export default class ControlGridRenderer {
     const startAngle = 0.75 * Math.PI
     const endAngle = 2.25 * Math.PI
     const valAngle = startAngle + (val / 127) * (endAngle - startAngle)
-    const outerR = radius
-    const innerR = radius * 0.6
 
-    // Recessed ring behind knob
+    // Flat dark recess
     ctx.beginPath()
-    ctx.arc(cx, cy, outerR + 3, 0, Math.PI * 2)
-    ctx.fillStyle = '#1a1a1a'
+    ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2)
+    ctx.fillStyle = '#222'
     ctx.fill()
-
-    // Knob body — raised circle with gradient
-    const knobGrad = ctx.createRadialGradient(cx - innerR * 0.3, cy - innerR * 0.3, 0, cx, cy, innerR)
-    knobGrad.addColorStop(0, '#555')
-    knobGrad.addColorStop(1, '#333')
-    ctx.beginPath()
-    ctx.arc(cx, cy, innerR, 0, Math.PI * 2)
-    ctx.fillStyle = knobGrad
-    ctx.fill()
-
-    // Knob edge bevel
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.arc(cx, cy, innerR - 0.5, Math.PI * 1.0, Math.PI * 1.85)
-    ctx.stroke()
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)'
-    ctx.beginPath()
-    ctx.arc(cx, cy, innerR - 0.5, Math.PI * 0.0, Math.PI * 0.85)
+    ctx.strokeStyle = '#1a1a1a'
+    ctx.lineWidth = 1.5
     ctx.stroke()
 
-    // Position indicator line on knob
-    const lineInner = innerR * 0.3
-    const lineOuter = innerR * 0.85
-    const lx1 = cx + Math.cos(valAngle) * lineInner
-    const ly1 = cy + Math.sin(valAngle) * lineInner
-    const lx2 = cx + Math.cos(valAngle) * lineOuter
-    const ly2 = cy + Math.sin(valAngle) * lineOuter
+    // Value arc — glowing orange sweep
+    if (val > 0) {
+      ctx.beginPath()
+      ctx.arc(cx, cy, radius, startAngle, valAngle)
+      ctx.strokeStyle = ORANGE
+      ctx.lineWidth = 3
+      ctx.lineCap = 'butt'
+      ctx.shadowColor = ORANGE
+      ctx.shadowBlur = 5
+      ctx.stroke()
+      ctx.shadowBlur = 0
+    }
+
+    // Dead arc — dim track for the remaining range
+    ctx.beginPath()
+    ctx.arc(cx, cy, radius, valAngle, endAngle)
+    ctx.strokeStyle = '#2a2a2a'
+    ctx.lineWidth = 3
+    ctx.stroke()
+
+    // Knob cap — flat circle, slightly smaller
+    const capR = radius * 0.55
+    ctx.beginPath()
+    ctx.arc(cx, cy, capR, 0, Math.PI * 2)
+    ctx.fillStyle = '#3a3a3a'
+    ctx.fill()
+    ctx.strokeStyle = '#1a1a1a'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    // Pointer notch — a small line from center outward
+    const notchInner = capR * 0.2
+    const notchOuter = capR * 0.9
+    ctx.shadowColor = ORANGE
+    ctx.shadowBlur = 3
     ctx.strokeStyle = ORANGE
     ctx.lineWidth = 2
     ctx.lineCap = 'round'
     ctx.beginPath()
-    ctx.moveTo(lx1, ly1)
-    ctx.lineTo(lx2, ly2)
+    ctx.moveTo(cx + Math.cos(valAngle) * notchInner, cy + Math.sin(valAngle) * notchInner)
+    ctx.lineTo(cx + Math.cos(valAngle) * notchOuter, cy + Math.sin(valAngle) * notchOuter)
     ctx.stroke()
+    ctx.shadowBlur = 0
     ctx.lineCap = 'butt'
-
-    // Scale marks in the recessed ring
-    const markR = outerR + 1
-    ctx.strokeStyle = '#555'
-    ctx.lineWidth = 1
-    for (let i = 0; i <= 10; i++) {
-      const a = startAngle + (i / 10) * (endAngle - startAngle)
-      const mx1 = cx + Math.cos(a) * (markR - 2)
-      const my1 = cy + Math.sin(a) * (markR - 2)
-      const mx2 = cx + Math.cos(a) * (markR + 1)
-      const my2 = cy + Math.sin(a) * (markR + 1)
-      ctx.beginPath()
-      ctx.moveTo(mx1, my1)
-      ctx.lineTo(mx2, my2)
-      ctx.stroke()
-    }
   }
 
   _drawFader(ctx, x, y, w, h, val, horizontal) {
@@ -353,7 +347,7 @@ export default class ControlGridRenderer {
       // --- Y-axis fader (left) ---
       ctx.fillStyle = '#222'
       ctx.fillRect(fx, fy, strip, ah)
-      ctx.strokeStyle = '#333'
+      ctx.strokeStyle = '#1a1a1a'
       ctx.lineWidth = 1
       ctx.strokeRect(fx, fy, strip, ah)
       if (valY > 0) {
@@ -368,7 +362,7 @@ export default class ControlGridRenderer {
       // --- X-axis fader (bottom) ---
       ctx.fillStyle = '#222'
       ctx.fillRect(bfx, bfy, bfw, strip)
-      ctx.strokeStyle = '#333'
+      ctx.strokeStyle = '#1a1a1a'
       ctx.lineWidth = 1
       ctx.strokeRect(bfx, bfy, bfw, strip)
       if (valX > 0) {
@@ -387,28 +381,14 @@ export default class ControlGridRenderer {
     }
 
     // --- Main pad (recessed) ---
-    ctx.fillStyle = '#1e1e1e'
+    ctx.fillStyle = '#1a1a1a'
     ctx.fillRect(ax - 1, ay - 1, aw + 2, ah + 2)
     ctx.fillStyle = '#282828'
     ctx.fillRect(ax, ay, aw, ah)
-    // Inner bevel — dark top/left, light bottom/right (recessed)
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(ax + 0.5, ay + ah)
-    ctx.lineTo(ax + 0.5, ay + 0.5)
-    ctx.lineTo(ax + aw, ay + 0.5)
-    ctx.stroke()
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)'
-    ctx.beginPath()
-    ctx.moveTo(ax + aw - 0.5, ay)
-    ctx.lineTo(ax + aw - 0.5, ay + ah - 0.5)
-    ctx.lineTo(ax, ay + ah - 0.5)
-    ctx.stroke()
 
     // Dotted grid lines
-    ctx.setLineDash([1, 4])
-    ctx.strokeStyle = '#4a4a4a'
+    ctx.setLineDash([1, 3])
+    ctx.strokeStyle = '#0a0a0a'
     ctx.lineWidth = 1
     for (let i = 1; i < 4; i++) {
       const gx = Math.round(ax + (aw * i) / 4) + 0.5
