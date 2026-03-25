@@ -2,7 +2,7 @@
 
 A browser-based MPE/MIDI controller for touchscreens.
 
-<img width="1080" height="681" alt="image" src="https://github.com/user-attachments/assets/92036a46-bb3b-4ebf-aae7-d117762c6a4b" />
+<img width="1126" height="682" alt="image" src="https://github.com/user-attachments/assets/44f07591-d553-4173-8bba-ec80c81cb16a" />
 
 ## Getting started
 
