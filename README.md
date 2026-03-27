@@ -11,9 +11,9 @@ https://github.com/user-attachments/assets/17ac5916-0cb0-4d1c-b2ad-c5d7fd4cbe9f
 
 1. Open [https://boux.github.io/TouchMPE/](https://boux.github.io/TouchMPE/) in **Chrome** on your Android phone or tablet. Optionally tap the menu and "Add to Home Screen" for fullscreen.
 
-2. Connect your phone to your computer via USB. On Android, go to **Settings > Connected Devices > USB** and select **MIDI**. If you don't see this option, you may need to enable Developer Mode first (Settings > About Phone > tap Build Number 7 times).
+2. Connect your phone to your computer via USB. On Android, go to **Settings > Connected Devices > USB** and select **MIDI**. If you don't see this option (most likely on Samsung devices), you may need to enable Developer Mode first (Settings > About Phone > tap Build Number 7 times). Once you are in Developer options, there is a setting called **Default USB configuration**.
 
-   *Note: only tested on stock Android with Chrome. iOS and Samsung devices have not been tested — your mileage may vary.*
+   *Note: only tested on Android and Samsung devices with Chrome. iOS devices have not been tested — your mileage may vary.*
 <img width="270" height="600" alt="Screenshot (Mar 22, 2026 8_07_04 PM)" src="https://github.com/user-attachments/assets/f51f1992-7805-4dbe-8f75-ac0f0b54db0d" />
 
 3. In TouchMPE's top bar, tap **MPE** and select **USB Peripheral Port** as your MIDI output.
