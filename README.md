@@ -4,6 +4,9 @@ A browser-based MPE/MIDI controller for touchscreens.
 
 <img width="1126" height="682" alt="image" src="https://github.com/user-attachments/assets/44f07591-d553-4173-8bba-ec80c81cb16a" />
 
+https://github.com/user-attachments/assets/17ac5916-0cb0-4d1c-b2ad-c5d7fd4cbe9f
+
+
 ## Getting started
 
 1. Open [https://boux.github.io/TouchMPE/](https://boux.github.io/TouchMPE/) in **Chrome** on your Android phone or tablet. Optionally tap the menu and "Add to Home Screen" for fullscreen.
