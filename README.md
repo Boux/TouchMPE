@@ -24,27 +24,6 @@ https://github.com/user-attachments/assets/17ac5916-0cb0-4d1c-b2ad-c5d7fd4cbe9f
 
 5. Play.
 
-## Features
-
-- **Multi-touch MPE** — each finger gets its own channel with pitch bend, slide, and pressure
-- **MIDI mode** — standard single-channel MIDI output (notes + velocity only)
-- **Isomorphic grid** — configurable root note, row/column offsets, and scale filtering
-- **Pitch quantize assist** — optional pitch correction that gently pulls toward scale notes
-- **CC panel** — customizable control surface with knobs, faders, XY pads, buttons, and toggles
-- **Installable** — add to home screen for fullscreen use, works offline
-
-## Controls
-
-| Action | Effect |
-|--------|--------|
-| Tap pad | Note on |
-| Slide horizontal | Pitch bend |
-| Slide vertical | Timbre (CC74) |
-| Press harder | Aftertouch* |
-| Top bar +/- | Octave shift |
-
-*Velocity and pressure detection is experimental — depends on device/browser support for touch force or contact area. Use the pressure mode setting to choose between force, contact area, or a fixed value.*
-
 ## CC Panel
 
 - Tap **CC** in the top bar to open
