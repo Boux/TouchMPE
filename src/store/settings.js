@@ -21,6 +21,9 @@ const DEFAULTS = {
   accentColor: '#ff8800',
 
   // Touch
+  velocityMode: 'fixed',
+  fixedVelocity: 0.75,
+  velocityCalibration: null, // { soft, medium, hard } — median area values
   noteOnQuantize: true,
   slidePitchMode: 'continuous',
   gravityPreset: 'medium',

@@ -18,6 +18,7 @@ export default class TouchHandler {
     this.filters = new Map()
 
     // Touch settings
+    this.velocityMode = 'area'
     this.pressureMode = 'auto'
     this.slidePitchMode = 'continuous'
     this.gravityRadius = 0.5
@@ -47,6 +48,9 @@ export default class TouchHandler {
   }
 
   applySettings(settings) {
+    this.velocityMode = settings.velocityMode || 'area'
+    this.fixedVelocity = settings.fixedVelocity ?? 0.75
+    this.velocityCalibration = settings.velocityCalibration || null
     this.pressureMode = settings.pressureMode || 'auto'
     this.slidePitchMode = settings.slidePitchMode || 'continuous'
     this.gravityRadius = settings.gravityRadius ?? 0.5
@@ -96,10 +100,28 @@ export default class TouchHandler {
     }
   }
 
-  _areaToNorm(e) {
-    if (!e.width || !e.height) return 0.5
-    const area = e.width * e.height
-    return Math.min(1, Math.max(0, (area - 40) / 360))
+  _areaToNorm(area) {
+    if (!area || area <= 0) return 0.3
+
+    const cal = this.velocityCalibration
+    if (cal && cal.soft > 0 && cal.hard > cal.soft) {
+      // Calibrated: map area to 0-1 using soft/hard as range
+      const norm = (area - cal.soft) / (cal.hard - cal.soft)
+      return Math.min(1, Math.max(0.05, norm))
+    }
+
+    // Uncalibrated fallback
+    const norm = (area - 15) / 250
+    return Math.min(1, Math.max(0.05, Math.pow(Math.max(0, norm), 0.7)))
+  }
+
+  _getArea(e) {
+    return (e.width || 0) * (e.height || 0)
+  }
+
+  _getVelocity(e) {
+    if (this.velocityMode === 'fixed') return this.fixedVelocity
+    return this._areaToNorm(this._getArea(e))
   }
 
   _applyDeadZonePx(xOffset) {
@@ -158,15 +180,21 @@ export default class TouchHandler {
     const filter = new TouchFilter()
     this.filters.set(e.pointerId, filter)
 
-    const pressure = this._getPressure(e)
-    // Pad spacing = distance between adjacent pad centers
     const padSpacing = hit.width + this.grid.gap
     const rowSpacing = hit.height + this.grid.gap
     const timbreNorm = this._calcTimbre(pos.y, hit.centerY, rowSpacing)
 
-    const channel = this.engine.noteOn(e.pointerId, hit.note, pressure, timbreNorm)
+    const velocity = this._getVelocity(e)
+    this._fireNoteOn(e.pointerId, hit, pos, velocity, timbreNorm, padSpacing, rowSpacing)
+  }
 
-    this.touches.set(e.pointerId, {
+  /**
+   * Fire the actual noteOn and register the touch.
+   */
+  _fireNoteOn(pointerId, hit, pos, velocity, timbreNorm, padSpacing, rowSpacing) {
+    const channel = this.engine.noteOn(pointerId, hit.note, velocity, timbreNorm)
+
+    this.touches.set(pointerId, {
       channel,
       note: hit.note,
       row: hit.row,
@@ -183,8 +211,9 @@ export default class TouchHandler {
       lastBendTime: performance.now()
     })
 
-    this.grid.setTouchActive(hit.row, hit.col, true, 0, timbreNorm, pressure, hit.centerX, pos.y, 0)
+    this.grid.setTouchActive(hit.row, hit.col, true, 0, timbreNorm, velocity, hit.centerX, pos.y, 0)
   }
+
 
   _onPointerMove(e) {
     const touch = this.touches.get(e.pointerId)
@@ -218,7 +247,8 @@ export default class TouchHandler {
     this.engine.updatePressure(e.pointerId, pressure)
 
     const pitchX = touch.padCenterX + (bendNorm * this.pitchBendRange / this.colOffset) * touch.padSpacing
-    this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, timbreNorm, pressure, pitchX, pos.y, touch.movementWeight)
+    // Pass null for pressure to preserve the initial noteOn velocity visual
+    this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, timbreNorm, null, pitchX, pos.y, touch.movementWeight)
   }
 
   _onPointerUp(e) {

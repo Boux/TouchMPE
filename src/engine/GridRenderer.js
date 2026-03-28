@@ -257,9 +257,10 @@ export default class GridRenderer {
         const padCenterX = px + pw / 2
         const padCenterY = py + ph / 2
 
-        // Glowing pad fill
+        // Glowing pad fill — brightness scales with velocity
         const { r: ar, g: ag, b: ab } = hexToRgb(this.accentColor)
-        const alpha = 0.35 + ts.pressure * 0.5
+        const vel = ts.pressure
+        const alpha = 0.08 + vel * 0.7
         ctx.beginPath()
         ctx.rect(px, py, pw, ph)
         ctx.fillStyle = `rgba(${ar}, ${ag}, ${ab}, ${alpha})`
@@ -269,7 +270,7 @@ export default class GridRenderer {
         const lr = Math.min(255, ar + 40)
         const lg = Math.min(255, ag + 40)
         const lb = Math.min(255, ab + 40)
-        ctx.strokeStyle = `rgba(${lr}, ${lg}, ${lb}, ${0.5 + ts.pressure * 0.4})`
+        ctx.strokeStyle = `rgba(${lr}, ${lg}, ${lb}, ${0.15 + vel * 0.7})`
         ctx.lineWidth = 1.5 * dpr
         ctx.stroke()
 

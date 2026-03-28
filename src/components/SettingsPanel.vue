@@ -70,6 +70,46 @@
         <h3>Touch</h3>
 
         <label>
+          Velocity
+          <select :value="settings.velocityMode"
+            @change="update('velocityMode', $event.target.value)">
+            <option value="area">Calibrated</option>
+            <option value="fixed">Fixed</option>
+          </select>
+        </label>
+
+        <label v-if="settings.velocityMode === 'fixed'">
+          Fixed Velocity
+          <div class="slider-group">
+            <input type="range" :value="Math.round((settings.fixedVelocity ?? 0.75) * 127)" min="1" max="127" step="1"
+              @input="update('fixedVelocity', +$event.target.value / 127)" />
+            <span class="slider-value">{{ Math.round((settings.fixedVelocity ?? 0.75) * 127) }}</span>
+          </div>
+        </label>
+
+        <div v-if="settings.velocityMode === 'area'" class="calibration-row">
+          <button class="reset-btn" @click="startCalibration">
+            {{ settings.velocityCalibration ? 'Recalibrate' : 'Calibrate Velocity' }}
+          </button>
+          <span v-if="settings.velocityCalibration" class="calibration-status">calibrated</span>
+          <button v-if="settings.velocityCalibration" class="reset-btn small-btn" @click="clearCalibration">
+            Reset
+          </button>
+        </div>
+
+        <!-- Calibration overlay -->
+        <teleport to="body">
+          <div v-if="calibrating" class="calibration-overlay" @pointerdown.prevent="onCalibrationTap">
+            <div class="calibration-prompt">
+              <div class="calibration-phase">{{ calibrationPhaseLabel }}</div>
+              <div class="calibration-count">{{ calibrationSamples.length }} / 10</div>
+              <div class="calibration-hint">Tap anywhere</div>
+              <button class="reset-btn" @pointerdown.stop @click="cancelCalibration">Cancel</button>
+            </div>
+          </div>
+        </teleport>
+
+        <label>
           Note-On Pitch
           <select :value="settings.noteOnQuantize ? 'quantize' : 'continuous'"
             @change="update('noteOnQuantize', $event.target.value === 'quantize')">
@@ -131,17 +171,6 @@
         </template>
 
         <label>
-          Pressure
-          <select :value="settings.pressureMode"
-            @change="update('pressureMode', $event.target.value)">
-            <option value="auto">Auto</option>
-            <option value="force">Force</option>
-            <option value="area">Contact Area</option>
-            <option value="fixed">Fixed</option>
-          </select>
-        </label>
-
-        <label>
           Timbre Distance
           <div class="compound-input">
             <input type="number" :value="settings.timbreDistance" min="1" max="8"
@@ -189,11 +218,19 @@ export default {
 
   data() {
     return {
-      noteNames: NOTE_NAMES
+      noteNames: NOTE_NAMES,
+      calibrating: false,
+      calibrationPhase: 0, // 0=soft, 1=medium, 2=hard
+      calibrationSamples: [],
+      calibrationData: { soft: [], medium: [], hard: [] }
     }
   },
 
   computed: {
+    calibrationPhaseLabel() {
+      return ['Tap SOFTLY', 'Tap MEDIUM', 'Tap HARD'][this.calibrationPhase] || ''
+    },
+
     rootPitchClass() {
       return this.settings.rootNote % 12
     },
@@ -222,6 +259,54 @@ export default {
       }
       const values = presets[name] || {}
       this.$emit('update', { ...this.settings, gravityPreset: name, ...values })
+    },
+
+    startCalibration() {
+      this.calibrating = true
+      this.calibrationPhase = 0
+      this.calibrationSamples = []
+      this.calibrationData = { soft: [], medium: [], hard: [] }
+    },
+
+    cancelCalibration() {
+      this.calibrating = false
+    },
+
+    clearCalibration() {
+      this.update('velocityCalibration', null)
+    },
+
+    onCalibrationTap(e) {
+      const area = (e.width || 0) * (e.height || 0)
+      if (area <= 0) return
+
+      this.calibrationSamples.push(area)
+      const phaseKey = ['soft', 'medium', 'hard'][this.calibrationPhase]
+      this.calibrationData[phaseKey].push(area)
+
+      if (this.calibrationSamples.length >= 10) {
+        this.calibrationPhase++
+        this.calibrationSamples = []
+
+        if (this.calibrationPhase >= 3) {
+          this.finishCalibration()
+        }
+      }
+    },
+
+    finishCalibration() {
+      const median = arr => {
+        const sorted = [...arr].sort((a, b) => a - b)
+        const mid = Math.floor(sorted.length / 2)
+        return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+      }
+
+      const soft = median(this.calibrationData.soft)
+      const medium = median(this.calibrationData.medium)
+      const hard = median(this.calibrationData.hard)
+
+      this.calibrating = false
+      this.update('velocityCalibration', { soft, medium, hard })
     },
 
     resetLayout() {
@@ -357,6 +442,54 @@ export default {
     font-size: 13px
     color: #888
     min-width: 40px
+
+.calibration-row
+  display: flex
+  align-items: center
+  gap: 8px
+  margin-bottom: 12px
+
+.calibration-status
+  font-size: 11px
+  color: #4c4
+
+.small-btn
+  padding: 4px 8px
+  font-size: 11px
+  min-height: 28px
+
+.calibration-overlay
+  position: fixed
+  inset: 0
+  background: rgba(0, 0, 0, 0.85)
+  z-index: 200
+  display: flex
+  align-items: center
+  justify-content: center
+  touch-action: none
+
+.calibration-prompt
+  text-align: center
+  display: flex
+  flex-direction: column
+  align-items: center
+  gap: 16px
+
+.calibration-phase
+  font-size: 28px
+  font-weight: 700
+  color: var(--accent)
+  text-transform: uppercase
+  letter-spacing: 2px
+
+.calibration-count
+  font-size: 48px
+  font-weight: 300
+  color: #fff
+
+.calibration-hint
+  font-size: 14px
+  color: #888
 
 .settings-build
   text-align: center
