@@ -378,9 +378,11 @@ export default {
         col: cell.col,
         row: cell.row
       })
-      // Assign next available CC numbers
+      // Assign next available CC numbers, excluding ones already picked
+      const assigned = []
       for (const key of Object.keys(ctrl.cc_num)) {
-        ctrl.cc_num[key] = this.nextAvailableCC(ctrl.cc_num[key])
+        ctrl.cc_num[key] = this.nextAvailableCC(ctrl.cc_num[key], ...assigned)
+        assigned.push(ctrl.cc_num[key])
       }
       this.config.controls.push(ctrl)
       this.saveConfig()
