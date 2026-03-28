@@ -2,15 +2,18 @@
 
 A browser-based MPE/MIDI controller for touchscreens.
 
-<img width="1080" height="681" alt="image" src="https://github.com/user-attachments/assets/92036a46-bb3b-4ebf-aae7-d117762c6a4b" />
+<img width="1126" height="682" alt="image" src="https://github.com/user-attachments/assets/44f07591-d553-4173-8bba-ec80c81cb16a" />
+
+https://github.com/user-attachments/assets/17ac5916-0cb0-4d1c-b2ad-c5d7fd4cbe9f
+
 
 ## Getting started
 
 1. Open [https://boux.github.io/TouchMPE/](https://boux.github.io/TouchMPE/) in **Chrome** on your Android phone or tablet. Optionally tap the menu and "Add to Home Screen" for fullscreen.
 
-2. Connect your phone to your computer via USB. On Android, go to **Settings > Connected Devices > USB** and select **MIDI**. If you don't see this option, you may need to enable Developer Mode first (Settings > About Phone > tap Build Number 7 times).
+2. Connect your phone to your computer via USB. On Android, go to **Settings > Connected Devices > USB** and select **MIDI**. If you don't see this option (most likely on Samsung devices), you may need to enable Developer Mode first (Settings > About Phone > tap Build Number 7 times). Once you are in Developer options, there is a setting called **Default USB configuration**.
 
-   *Note: only tested on stock Android with Chrome. iOS and Samsung devices have not been tested — your mileage may vary.*
+   *Note: only tested on Android and Samsung devices with Chrome. iOS devices have not been tested — your mileage may vary.*
 <img width="270" height="600" alt="Screenshot (Mar 22, 2026 8_07_04 PM)" src="https://github.com/user-attachments/assets/f51f1992-7805-4dbe-8f75-ac0f0b54db0d" />
 
 3. In TouchMPE's top bar, tap **MPE** and select **USB Peripheral Port** as your MIDI output.
@@ -20,27 +23,6 @@ A browser-based MPE/MIDI controller for touchscreens.
 <img width="573" height="147" alt="image" src="https://github.com/user-attachments/assets/e91cf3e6-eedc-4202-85a2-4d1d20cf8765" />
 
 5. Play.
-
-## Features
-
-- **Multi-touch MPE** — each finger gets its own channel with pitch bend, slide, and pressure
-- **MIDI mode** — standard single-channel MIDI output (notes + velocity only)
-- **Isomorphic grid** — configurable root note, row/column offsets, and scale filtering
-- **Pitch quantize assist** — optional pitch correction that gently pulls toward scale notes
-- **CC panel** — customizable control surface with knobs, faders, XY pads, buttons, and toggles
-- **Installable** — add to home screen for fullscreen use, works offline
-
-## Controls
-
-| Action | Effect |
-|--------|--------|
-| Tap pad | Note on |
-| Slide horizontal | Pitch bend |
-| Slide vertical | Timbre (CC74) |
-| Press harder | Aftertouch* |
-| Top bar +/- | Octave shift |
-
-*Velocity and pressure detection is experimental — depends on device/browser support for touch force or contact area. Use the pressure mode setting to choose between force, contact area, or a fixed value.*
 
 ## CC Panel
 
