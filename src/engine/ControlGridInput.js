@@ -193,11 +193,11 @@ export default class ControlGridInput {
         const valX = Math.max(0, Math.min(127, ((e.clientX - r.x) / r.w) * 127))
         const valY = Math.max(0, Math.min(127, (1 - (e.clientY - r.y) / r.h) * 127))
         if (p.xyZone === 'x') {
-          this.cb.onValueChange(ctrl, valX)
+          this.cb.onValueChange(ctrl, { x: valX })
         } else if (p.xyZone === 'y') {
-          this.cb.onValueChange(ctrl, undefined, valY)
+          this.cb.onValueChange(ctrl, { y: valY })
         } else {
-          this.cb.onValueChange(ctrl, valX, valY)
+          this.cb.onValueChange(ctrl, { x: valX, y: valY })
         }
       }
     }

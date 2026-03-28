@@ -52,7 +52,7 @@ export default class ControlGridRenderer {
     if (!this.dirty) return
     this.dirty = false
 
-    const { cellSize, gap, panX, panY, controls, controlValues, xyValues,
+    const { cellSize, gap, panX, panY, controls,
             selectedCtrl, dragStart, dragEnd, occupiedSet } = state
     this._accent = state.accentColor || ACCENT_DEFAULT
     const ctx = this.ctx
@@ -107,7 +107,7 @@ export default class ControlGridRenderer {
       const y = ctrl.row * step - panY
       const w = ctrl.colSpan * step
       const h = ctrl.rowSpan * step
-      const val = controlValues[ctrl.id] ?? 0
+      const val = ctrl.values?.value ?? 0
       const isSelected = selectedCtrl === ctrl.id
 
       // Background (fills full cell including gap area)
@@ -156,7 +156,7 @@ export default class ControlGridRenderer {
           this._drawFader(ctx, x, y, w, h, val, ctrl.colSpan > ctrl.rowSpan)
           break
         case 'xypad':
-          this._drawXYPad(ctx, x, y, w, h, val, xyValues[ctrl.id] ?? 64, ctrl)
+          this._drawXYPad(ctx, x, y, w, h, ctrl.values?.x ?? 0, ctrl.values?.y ?? 0, ctrl)
           break
         case 'button':
         case 'toggle':
@@ -166,7 +166,7 @@ export default class ControlGridRenderer {
 
       // Label and value — XY pads draw these inside the pad area
       if (ctrl.type !== 'xypad') {
-        const label = ctrl.label || ('CC' + (ctrl.cc ?? 1))
+        const label = ctrl.displayLabel || ctrl.label || ctrl.id
         ctx.fillStyle = TEXT_MED
         ctx.font = `600 ${Math.min(11, minDim * 0.18)}px -apple-system, sans-serif`
         ctx.textAlign = 'center'
@@ -445,7 +445,7 @@ export default class ControlGridRenderer {
     ctx.fill()
 
     // Label inside pad (top-left)
-    const label = ctrl ? (ctrl.label || ('CC' + (ctrl.cc ?? 1))) : ''
+    const label = ctrl ? (ctrl.displayLabel || ctrl.id) : ''
     ctx.fillStyle = 'rgba(255,255,255,0.3)'
     ctx.font = `600 ${Math.min(10, aw * 0.08)}px -apple-system, sans-serif`
     ctx.textAlign = 'left'

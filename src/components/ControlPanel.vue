@@ -70,13 +70,10 @@
         Label
         <input type="text" v-model="selectedControl.label" @input="saveConfig; markDirty()" />
       </label>
-      <label>
-        {{ selectedControl.type === 'xypad' ? 'CC X-Axis' : 'CC Number' }}
-        <input type="number" v-model.number="selectedControl.cc" min="0" max="127" @input="saveConfig; markDirty()" />
-      </label>
-      <label v-if="selectedControl.type === 'xypad'">
-        CC Y-Axis
-        <input type="number" v-model.number="selectedControl.cc2" min="0" max="127" @input="saveConfig; markDirty()" />
+      <label v-for="(ccNum, key) in selectedControl.cc_num" :key="key">
+        {{ ccLabel(selectedControl, key) }}
+        <input type="number" :value="ccNum" min="0" max="127"
+          @input="selectedControl.cc_num[key] = +$event.target.value; saveConfig(); markDirty()" />
       </label>
       <button class="delete-config-btn" @click="deleteControl(selectedControl.id)">
         Delete Control
@@ -88,6 +85,7 @@
 <script>
 import { computePosition, autoPlacement, shift } from '@floating-ui/dom'
 import { generateId, saveControlConfig } from '../store/controlConfig.js'
+import { createControl } from '../engine/controls/index.js'
 import ControlGridRenderer from '../engine/ControlGridRenderer.js'
 import ControlGridInput from '../engine/ControlGridInput.js'
 
@@ -109,8 +107,6 @@ export default {
       selectedCtrl: null,
       dragStart: null,
       dragEnd: null,
-      controlValues: {},
-      xyValues: {},
       layoutMode: false,
       locked: false,
       dragging: false,
@@ -149,12 +145,16 @@ export default {
   },
 
   mounted() {
+    this._hydrateControls()
     this.renderer = new ControlGridRenderer(this.$refs.gridCanvas)
     this.input = new ControlGridInput(this.$refs.gridCanvas, {
-      onValueChange: (ctrl, val, valY) => {
-        if (val !== undefined) this.controlValues[ctrl.id] = val
-        if (valY !== undefined) this.xyValues[ctrl.id] = valY
-        this.sendValue(ctrl)
+      onValueChange: (ctrl, val) => {
+        const ccUpdates = ctrl.setValues(val)
+        if (this.engine) {
+          for (const [ccNum, v] of Object.entries(ccUpdates)) {
+            this.engine.sendCC(+ccNum, Math.round(v))
+          }
+        }
         this.markDirty()
       },
       onContext: (cell, e) => {
@@ -189,7 +189,10 @@ export default {
         this.panY = py
         this.markDirty()
       },
-      getValue: (id) => this.controlValues[id] ?? 0
+      getValue: (id, key = 'value') => {
+        const ctrl = this.config.controls.find(c => c.id === id)
+        return ctrl ? (ctrl.values[key] ?? 0) : 0
+      }
     })
     this.input.cellSize = this.config.cellSize || 60
     this.input.controls = this.config.controls
@@ -242,6 +245,19 @@ export default {
   },
 
   methods: {
+    ccLabel(ctrl, key) {
+      const count = Object.keys(ctrl.cc_num).length
+      if (count === 1) return 'CC Number'
+      const labels = { x: 'CC X-Axis', y: 'CC Y-Axis', value: 'CC Number' }
+      return labels[key] || ('CC ' + key)
+    },
+
+    _hydrateControls() {
+      this.config.controls = this.config.controls.map(c =>
+        c.cc_num ? c : createControl(c)
+      )
+    },
+
     markDirty() {
       if (this.renderer) this.renderer.dirty = true
     },
@@ -254,8 +270,6 @@ export default {
           panX: this.panX,
           panY: this.panY,
           controls: this.config.controls,
-          controlValues: this.controlValues,
-          xyValues: this.xyValues,
           selectedCtrl: this.selectedCtrl,
           dragStart: this.dragStart,
           dragEnd: this.dragEnd,
@@ -340,8 +354,10 @@ export default {
     nextAvailableCC(preferred, ...exclude) {
       const used = new Set(exclude)
       for (const ctrl of this.config.controls) {
-        used.add(ctrl.cc)
-        if (ctrl.cc2 != null) used.add(ctrl.cc2)
+        const nums = ctrl.cc_num || {}
+        for (const v of Object.values(nums)) {
+          if (v != null) used.add(v)
+        }
       }
       if (!used.has(preferred)) return preferred
       for (let cc = 1; cc <= 127; cc++) {
@@ -356,18 +372,16 @@ export default {
         this.popup = null
         return
       }
-      const ccDefaults = { knob: 1, fader: 7, button: 64, toggle: 64, xypad: 1 }
-      const ctrl = {
+      const ctrl = createControl({
         id: generateId(),
         type,
-        label: '',
-        cc: this.nextAvailableCC(ccDefaults[type]),
         col: cell.col,
-        row: cell.row,
-        colSpan: 1,
-        rowSpan: 1
+        row: cell.row
+      })
+      // Assign next available CC numbers
+      for (const key of Object.keys(ctrl.cc_num)) {
+        ctrl.cc_num[key] = this.nextAvailableCC(ctrl.cc_num[key])
       }
-      if (type === 'xypad') ctrl.cc2 = this.nextAvailableCC(2, ctrl.cc)
       this.config.controls.push(ctrl)
       this.saveConfig()
       this.popup = null
@@ -426,13 +440,6 @@ export default {
       saveControlConfig(this.config)
     },
 
-    sendValue(ctrl) {
-      if (!this.engine) return
-      this.engine.sendCC(ctrl.cc, Math.round(this.controlValues[ctrl.id] ?? 0))
-      if (ctrl.type === 'xypad' && ctrl.cc2 != null) {
-        this.engine.sendCC(ctrl.cc2, Math.round(this.xyValues[ctrl.id] ?? 0))
-      }
-    },
 
     // --- Layout mode ---
     startDragSnap(e) {
