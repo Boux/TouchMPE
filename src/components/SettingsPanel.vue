@@ -199,7 +199,7 @@
         </label>
       </div>
 
-      <div class="settings-build">build 9</div>
+      <div class="settings-build">build 10</div>
     </div>
   </div>
 </template>
