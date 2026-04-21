@@ -85,7 +85,7 @@
 <script>
 import { computePosition, autoPlacement, shift } from '@floating-ui/dom'
 import { generateId, saveControlConfig } from '../store/controlConfig.js'
-import { createControl } from '../engine/controls/index.js'
+import { createControl, Control } from '../engine/controls/index.js'
 import ControlGridRenderer from '../engine/ControlGridRenderer.js'
 import ControlGridInput from '../engine/ControlGridInput.js'
 
@@ -254,7 +254,7 @@ export default {
 
     _hydrateControls() {
       this.config.controls = this.config.controls.map(c =>
-        c.cc_num ? c : createControl(c)
+        c instanceof Control ? c : createControl(c)
       )
     },
 
