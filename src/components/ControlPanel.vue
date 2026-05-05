@@ -55,42 +55,9 @@
       @pointerdown="startPopupDrag($event, 'addPopup')">
       <div class="add-controls-label">Add Control</div>
       <div class="add-controls-grid">
-        <button @click="placeControl('knob')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <circle cx="12" cy="12" r="7"/>
-            <line x1="12" y1="12" x2="8" y2="8" stroke-linecap="round"/>
-          </svg>
-          <span>Knob</span>
-        </button>
-        <button @click="placeControl('fader')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <line x1="12" y1="4" x2="12" y2="20" stroke-linecap="round"/>
-            <rect x="6" y="13" width="12" height="4" rx="1" fill="currentColor" stroke="none"/>
-          </svg>
-          <span>Fader</span>
-        </button>
-        <button @click="placeControl('button')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <circle cx="12" cy="12" r="7"/>
-            <circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>
-          </svg>
-          <span>Button</span>
-        </button>
-        <button @click="placeControl('toggle')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <rect x="3" y="8" width="18" height="8" rx="4"/>
-            <circle cx="16" cy="12" r="2.5" fill="currentColor" stroke="none"/>
-          </svg>
-          <span>Toggle</span>
-        </button>
-        <button @click="placeControl('xypad')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <rect x="4" y="4" width="16" height="16" rx="1"/>
-            <line x1="4" y1="9" x2="20" y2="9" stroke-dasharray="1 2" opacity="0.5"/>
-            <line x1="15" y1="4" x2="15" y2="20" stroke-dasharray="1 2" opacity="0.5"/>
-            <circle cx="15" cy="9" r="2" fill="currentColor" stroke="none"/>
-          </svg>
-          <span>XY</span>
+        <button v-for="t in controlTypes" :key="t.type" @click="placeControl(t.type)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" v-html="t.svg"></svg>
+          <span>{{ t.label }}</span>
         </button>
       </div>
     </div>
@@ -99,18 +66,33 @@
     <div v-if="selectedControl" ref="configPopup" class="floating-popup"
       :class="{ 'is-dimmed': dragStart && dragEnd }"
       @pointerdown="startPopupDrag($event, 'configPopup')">
-      <label>
-        Label
-        <input type="text" v-model="selectedControl.label" @input="saveConfig; markDirty()" />
-      </label>
-      <label v-for="(ccNum, key) in selectedControl.cc_num" :key="key">
-        {{ ccLabel(selectedControl, key) }}
-        <input type="number" :value="ccNum" min="0" max="127"
-          @input="selectedControl.cc_num[key] = +$event.target.value; saveConfig(); markDirty()" />
-      </label>
-      <button class="delete-config-btn" @click="deleteControl(selectedControl.id)">
-        Delete Control
-      </button>
+      <template v-if="!changeMode">
+        <label>
+          Label
+          <input type="text" v-model="selectedControl.label" @input="saveConfig; markDirty()" />
+        </label>
+        <label v-for="(ccNum, key) in selectedControl.cc_num" :key="key">
+          {{ ccLabel(selectedControl, key) }}
+          <input type="number" :value="ccNum" min="0" max="127"
+            @input="selectedControl.cc_num[key] = +$event.target.value; saveConfig(); markDirty()" />
+        </label>
+        <div class="config-actions">
+          <button class="change-config-btn" @click="changeMode = true">Change</button>
+          <button class="delete-config-btn" @click="deleteControl(selectedControl.id)">Delete</button>
+        </div>
+      </template>
+      <template v-else>
+        <div class="add-controls-label">Change Type</div>
+        <div class="add-controls-grid">
+          <button v-for="t in controlTypes" :key="t.type"
+            :class="{ 'is-current': t.type === selectedControl.type }"
+            @click="changeType(t.type)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" v-html="t.svg"></svg>
+            <span>{{ t.label }}</span>
+          </button>
+        </div>
+        <button class="cancel-config-btn" @click="changeMode = false">Cancel</button>
+      </template>
     </div>
   </div>
 </template>
@@ -143,8 +125,16 @@ export default {
       layoutMode: false,
       locked: false,
       dragging: false,
+      changeMode: false,
       panX: 0,
-      panY: 0
+      panY: 0,
+      controlTypes: [
+        { type: 'knob', label: 'Knob', svg: '<circle cx="12" cy="12" r="7"/><line x1="12" y1="12" x2="8" y2="8" stroke-linecap="round"/>' },
+        { type: 'fader', label: 'Fader', svg: '<line x1="12" y1="4" x2="12" y2="20" stroke-linecap="round"/><rect x="6" y="13" width="12" height="4" rx="1" fill="currentColor" stroke="none"/>' },
+        { type: 'button', label: 'Button', svg: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>' },
+        { type: 'toggle', label: 'Toggle', svg: '<rect x="3" y="8" width="18" height="8" rx="4"/><circle cx="16" cy="12" r="2.5" fill="currentColor" stroke="none"/>' },
+        { type: 'xypad', label: 'XY', svg: '<rect x="4" y="4" width="16" height="16" rx="1"/><line x1="4" y1="9" x2="20" y2="9" stroke-dasharray="1 2" opacity="0.5"/><line x1="15" y1="4" x2="15" y2="20" stroke-dasharray="1 2" opacity="0.5"/><circle cx="15" cy="9" r="2" fill="currentColor" stroke="none"/>' }
+      ]
     }
   },
 
@@ -273,6 +263,7 @@ export default {
     },
     selectedCtrl() {
       if (this.input) this.input.selectedCtrl = this.selectedCtrl
+      this.changeMode = false
       this.markDirty()
     }
   },
@@ -430,6 +421,39 @@ export default {
       if (this.selectedCtrl === id) this.selectedCtrl = null
       this.saveConfig()
       this.markDirty()
+    },
+
+    changeType(newType) {
+      const ctrl = this.selectedControl
+      if (!ctrl) return
+      if (ctrl.type === newType) {
+        this.changeMode = false
+        return
+      }
+      const oldCC = ctrl.cc_num.value ?? ctrl.cc_num.x ?? 1
+      const data = {
+        id: ctrl.id,
+        type: newType,
+        label: ctrl.label,
+        col: ctrl.col,
+        row: ctrl.row,
+        colSpan: ctrl.colSpan,
+        rowSpan: ctrl.rowSpan,
+        channel: ctrl.channel
+      }
+      if (newType === 'xypad') {
+        const yCC = this.nextAvailableCC(ctrl.cc_num.y ?? 2, oldCC)
+        data.cc_num = { x: oldCC, y: yCC }
+      } else {
+        data.cc_num = { value: oldCC }
+      }
+      const newCtrl = createControl(data)
+      const idx = this.config.controls.findIndex(c => c.id === ctrl.id)
+      if (idx !== -1) this.config.controls.splice(idx, 1, newCtrl)
+      this.changeMode = false
+      this.saveConfig()
+      this.markDirty()
+      this.repositionConfigPopup()
     },
 
     finishDragResize(from, to) {
@@ -676,6 +700,16 @@ export default {
     &:hover
       background: #622
 
+  .config-actions
+    display: flex
+    gap: 6px
+
+    button
+      flex: 1
+
+  .cancel-config-btn
+    color: #888
+
 .add-controls-label
   font-size: 13px
   color: #888
@@ -701,6 +735,10 @@ export default {
       width: 24px
       height: 24px
       flex-shrink: 0
+
+    &.is-current
+      border-color: var(--accent)
+      color: var(--accent)
 
 // Layout mode
 .layout-overlay
