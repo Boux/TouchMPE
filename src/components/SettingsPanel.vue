@@ -178,6 +178,15 @@
             <span class="unit">rows</span>
           </div>
         </label>
+
+        <label>
+          Slide Highlight
+          <select :value="settings.slideHighlight || 'follow'"
+            @change="update('slideHighlight', $event.target.value)">
+            <option value="follow">Follows Pitch</option>
+            <option value="origin">Pressed Note</option>
+          </select>
+        </label>
       </div>
 
       <div v-if="settings.mpeMode !== false" class="settings-section">

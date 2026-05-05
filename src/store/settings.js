@@ -31,7 +31,8 @@ const DEFAULTS = {
   gravityStrength: 0.4,
   gravityDecay: 0.4,
   pressureMode: 'auto',
-  timbreDistance: 1
+  timbreDistance: 1,
+  slideHighlight: 'follow' // 'follow' = highlight tracks pitch; 'origin' = highlight stays on pressed pad
 }
 
 /**

@@ -28,6 +28,8 @@ export default class TouchHandler {
     this.colOffset = 1
     this.timbreDistance = 1
     this.deadZonePx = 5 // pixels of movement before bend starts
+    this.mpeMode = true
+    this.slideHighlight = 'follow'
 
     this._onPointerDown = this._onPointerDown.bind(this)
     this._onPointerMove = this._onPointerMove.bind(this)
@@ -59,6 +61,8 @@ export default class TouchHandler {
     this.pitchBendRange = settings.pitchBendRange || 48
     this.colOffset = settings.colOffset || 1
     this.timbreDistance = settings.timbreDistance || 1
+    this.mpeMode = settings.mpeMode !== false
+    this.slideHighlight = settings.slideHighlight || 'follow'
   }
 
   tickGravity() {
@@ -68,7 +72,8 @@ export default class TouchHandler {
       const bendNorm = this._applyPitchMode(touch.lastRawBend, touch, now)
       this.engine.updatePitchBend(pointerId, bendNorm)
       const pitchX = touch.padCenterX + (bendNorm * this.pitchBendRange / this.colOffset) * touch.padSpacing
-      this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, null, null, pitchX, null, touch.movementWeight)
+      this._resolveCurrentPad(touch, pitchX)
+      this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, null, null, pitchX, null, touch.movementWeight, touch.currentRow, touch.currentCol)
     }
   }
 
@@ -199,6 +204,8 @@ export default class TouchHandler {
       note: hit.note,
       row: hit.row,
       col: hit.col,
+      currentRow: hit.row,
+      currentCol: hit.col,
       padCenterX: hit.centerX,
       padCenterY: hit.centerY,
       padSpacing,
@@ -211,7 +218,17 @@ export default class TouchHandler {
       lastBendTime: performance.now()
     })
 
-    this.grid.setTouchActive(hit.row, hit.col, true, 0, timbreNorm, velocity, hit.centerX, pos.y, 0)
+    this.grid.setTouchOrigin(pointerId, hit.row, hit.col)
+    this.grid.setTouchActive(hit.row, hit.col, true, 0, timbreNorm, velocity, hit.centerX, pos.y, 0, hit.row, hit.col)
+  }
+
+  _resolveCurrentPad(touch, pitchX) {
+    if (!this.mpeMode || this.slideHighlight !== 'follow') return
+    const target = this.grid.hitTest(pitchX, touch.padCenterY)
+    if (target) {
+      touch.currentRow = target.row
+      touch.currentCol = target.col
+    }
   }
 
 
@@ -247,8 +264,9 @@ export default class TouchHandler {
     this.engine.updatePressure(e.pointerId, pressure)
 
     const pitchX = touch.padCenterX + (bendNorm * this.pitchBendRange / this.colOffset) * touch.padSpacing
+    this._resolveCurrentPad(touch, pitchX)
     // Pass null for pressure to preserve the initial noteOn velocity visual
-    this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, timbreNorm, null, pitchX, pos.y, touch.movementWeight)
+    this.grid.setTouchActive(touch.row, touch.col, true, bendNorm, timbreNorm, null, pitchX, pos.y, touch.movementWeight, touch.currentRow, touch.currentCol)
   }
 
   _onPointerUp(e) {
@@ -261,6 +279,7 @@ export default class TouchHandler {
     this.filters.delete(e.pointerId)
 
     this.grid.setTouchActive(touch.row, touch.col, false, 0, 0.5, 0, 0, 0)
+    this.grid.clearTouchOrigin(e.pointerId)
   }
 
   /**

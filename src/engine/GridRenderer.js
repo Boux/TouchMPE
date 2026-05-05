@@ -32,9 +32,10 @@ export default class GridRenderer {
     this.staticCtx = this.staticCanvas.getContext('2d')
     this.staticDirty = true
 
-    // Touch state per pad
+    // Touch state per pad (keyed at origin)
     this.touchState = []
     this.hasActiveTouches = false
+    this.touchOrigins = new Map() // pointerId → { row, col }
     this.dynamicDirty = true
     this.onResize = null
 
@@ -49,9 +50,10 @@ export default class GridRenderer {
 
   setGrid(grid) {
     this.grid = grid
-    this.touchState = grid.map(row => row.map(() => ({
+    this.touchState = grid.map((row, r) => row.map((_, c) => ({
       active: false, bendNorm: 0, timbreNorm: 0.5, pressure: 0,
-      pointerX: 0, pointerY: 0, movementWeight: 0
+      pointerX: 0, pointerY: 0, movementWeight: 0,
+      currentRow: r, currentCol: c
     })))
     this._computePadGeometry()
     this.staticDirty = true
@@ -68,7 +70,7 @@ export default class GridRenderer {
     this.dynamicDirty = true
   }
 
-  setTouchActive(row, col, active, bendNorm, timbreNorm, pressure, pointerX = 0, pointerY = 0, movementWeight = null) {
+  setTouchActive(row, col, active, bendNorm, timbreNorm, pressure, pointerX = 0, pointerY = 0, movementWeight = null, currentRow = null, currentCol = null) {
     if (!this.touchState[row] || !this.touchState[row][col]) return
     const s = this.touchState[row][col]
     s.active = active
@@ -78,8 +80,20 @@ export default class GridRenderer {
     if (pointerX !== null) s.pointerX = pointerX
     if (pointerY !== null) s.pointerY = pointerY
     if (movementWeight !== null) s.movementWeight = movementWeight
+    if (currentRow !== null) s.currentRow = currentRow
+    if (currentCol !== null) s.currentCol = currentCol
+    if (!active) { s.currentRow = row; s.currentCol = col }
     this.dynamicDirty = true
     this._updateHasActiveTouches()
+  }
+
+  setTouchOrigin(pointerId, row, col) {
+    this.touchOrigins.set(pointerId, { row, col })
+    this.dynamicDirty = true
+  }
+
+  clearTouchOrigin(pointerId) {
+    if (this.touchOrigins.delete(pointerId)) this.dynamicDirty = true
   }
 
   hitTest(x, y) {
@@ -244,25 +258,32 @@ export default class GridRenderer {
         const ts = this.touchState[r][c]
         if (!ts.active) continue
 
-        const pad = this.pads[r][c]
-        if (!pad) continue
+        const originPad = this.pads[r][c]
+        if (!originPad) continue
 
-        const px = pad.x * dpr
-        const py = pad.y * dpr
-        const pw = pad.w * dpr
-        const ph = pad.h * dpr
-        // Pointer position in canvas pixels
+        // Glow renders at the pitch-current pad (falls back to origin if off-grid)
+        const glowPad = this.pads[ts.currentRow]?.[ts.currentCol] || originPad
+        const glowCell = this.grid[ts.currentRow]?.[ts.currentCol] || this.grid[r][c]
+
+        const gx = glowPad.x * dpr
+        const gy = glowPad.y * dpr
+        const gw = glowPad.w * dpr
+        const gh = glowPad.h * dpr
+        const glowCenterX = gx + gw / 2
+        const glowCenterY = gy + gh / 2
+
+        // Origin pad center — anchors the bend/timbre lines, unchanged by slide
+        const originCenterX = (originPad.x + originPad.w / 2) * dpr
+        const originCenterY = (originPad.y + originPad.h / 2) * dpr
         const fingerX = ts.pointerX * dpr
         const fingerY = ts.pointerY * dpr
-        const padCenterX = px + pw / 2
-        const padCenterY = py + ph / 2
 
         // Glowing pad fill — brightness scales with velocity
         const { r: ar, g: ag, b: ab } = hexToRgb(this.accentColor)
         const vel = ts.pressure
         const alpha = 0.08 + vel * 0.7
         ctx.beginPath()
-        ctx.rect(px, py, pw, ph)
+        ctx.rect(gx, gy, gw, gh)
         ctx.fillStyle = `rgba(${ar}, ${ag}, ${ab}, ${alpha})`
         ctx.fill()
 
@@ -275,41 +296,40 @@ export default class GridRenderer {
         ctx.stroke()
 
         // Redraw note name in white over the glow
-        const cell = this.grid[r][c]
-        if (cell) {
-          const name = noteNameShort(cell.note)
-          const fontSize = Math.min(pw, ph) * 0.28
+        if (glowCell) {
+          const name = noteNameShort(glowCell.note)
+          const fontSize = Math.min(gw, gh) * 0.28
           ctx.fillStyle = '#fff'
           ctx.font = `600 ${fontSize}px -apple-system, sans-serif`
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
-          ctx.fillText(name, padCenterX, padCenterY - fontSize * 0.15)
+          ctx.fillText(name, glowCenterX, glowCenterY - fontSize * 0.15)
 
-          const octave = Math.floor(cell.note / 12) - 1
+          const octave = Math.floor(glowCell.note / 12) - 1
           const octFontSize = fontSize * 0.55
           ctx.fillStyle = '#ddd'
           ctx.font = `${octFontSize}px -apple-system, sans-serif`
-          ctx.fillText(octave, padCenterX, padCenterY + fontSize * 0.55)
+          ctx.fillText(octave, glowCenterX, glowCenterY + fontSize * 0.55)
         }
 
         if (this.mpeMode) {
-          // Pitch bend line — horizontal from pad center to finger X
-          if (Math.abs(fingerX - padCenterX) > 2 * dpr) {
+          // Pitch bend line — horizontal from ORIGIN pad center to finger X
+          if (Math.abs(fingerX - originCenterX) > 2 * dpr) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
             ctx.lineWidth = 1.5 * dpr
             ctx.beginPath()
-            ctx.moveTo(padCenterX, padCenterY)
-            ctx.lineTo(fingerX, padCenterY)
+            ctx.moveTo(originCenterX, originCenterY)
+            ctx.lineTo(fingerX, originCenterY)
             ctx.stroke()
           }
 
-          // Timbre line — vertical from pad center to finger Y
-          if (Math.abs(fingerY - padCenterY) > 2 * dpr) {
+          // Timbre line — vertical from ORIGIN pad center to finger Y
+          if (Math.abs(fingerY - originCenterY) > 2 * dpr) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
             ctx.lineWidth = 1.5 * dpr
             ctx.beginPath()
-            ctx.moveTo(padCenterX, padCenterY)
-            ctx.lineTo(padCenterX, fingerY)
+            ctx.moveTo(originCenterX, originCenterY)
+            ctx.lineTo(originCenterX, fingerY)
             ctx.stroke()
           }
         }
