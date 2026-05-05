@@ -81,26 +81,6 @@ export default class ControlGridRenderer {
 
     // Grid lines disabled for testing
 
-    // Draw drag highlight
-    if (selectedCtrl && dragStart && dragEnd) {
-      const c1 = Math.min(dragStart.col, dragEnd.col)
-      const c2 = Math.max(dragStart.col, dragEnd.col)
-      const r1 = Math.min(dragStart.row, dragEnd.row)
-      const r2 = Math.max(dragStart.row, dragEnd.row)
-      const { r: dr, g: dg, b: db } = hexToRgb(this._accent)
-      ctx.fillStyle = `rgba(${dr}, ${dg}, ${db}, 0.25)`
-      ctx.strokeStyle = this._accent
-      ctx.lineWidth = 1.5
-      for (let r = r1; r <= r2; r++) {
-        for (let c = c1; c <= c2; c++) {
-          const x = c * step - panX
-          const y = r * step - panY
-          ctx.fillRect(x, y, cellSize, cellSize)
-          ctx.strokeRect(x, y, cellSize, cellSize)
-        }
-      }
-    }
-
     // Draw controls — flush with each other, dark border between
     for (const ctrl of controls) {
       const x = ctrl.col * step - panX
@@ -181,6 +161,51 @@ export default class ControlGridRenderer {
           ctx.fillText(Math.round(val).toString(), cx, y + h - 5, w - 12)
         }
       }
+    }
+
+    // Drag highlight — drawn last so it stays visible over controls
+    if (selectedCtrl && dragStart && dragEnd) {
+      const c1 = Math.min(dragStart.col, dragEnd.col)
+      const c2 = Math.max(dragStart.col, dragEnd.col)
+      const r1 = Math.min(dragStart.row, dragEnd.row)
+      const r2 = Math.max(dragStart.row, dragEnd.row)
+
+      // Cells belonging to the selected control are valid targets, not conflicts
+      const selfCells = new Set()
+      const sel = controls.find(c => c.id === selectedCtrl)
+      if (sel) {
+        for (let r = sel.row; r < sel.row + sel.rowSpan; r++) {
+          for (let c = sel.col; c < sel.col + sel.colSpan; c++) {
+            selfCells.add(c + ',' + r)
+          }
+        }
+      }
+
+      const { r: dr, g: dg, b: db } = hexToRgb(this._accent)
+      let hasConflict = false
+      for (let r = r1; r <= r2; r++) {
+        for (let c = c1; c <= c2; c++) {
+          const key = c + ',' + r
+          const conflict = occupiedSet.has(key) && !selfCells.has(key)
+          if (conflict) hasConflict = true
+          const x = c * step - panX
+          const y = r * step - panY
+          ctx.fillStyle = conflict ? 'rgba(255, 60, 60, 0.55)' : `rgba(${dr}, ${dg}, ${db}, 0.35)`
+          ctx.fillRect(x, y, cellSize, cellSize)
+        }
+      }
+
+      const rx = c1 * step - panX
+      const ry = r1 * step - panY
+      const rw = (c2 - c1 + 1) * step - gap
+      const rh = (r2 - r1 + 1) * step - gap
+      const outline = hasConflict ? '#ff3c3c' : this._accent
+      ctx.strokeStyle = outline
+      ctx.lineWidth = 2
+      ctx.shadowColor = outline
+      ctx.shadowBlur = 8
+      ctx.strokeRect(rx, ry, rw, rh)
+      ctx.shadowBlur = 0
     }
   }
 

@@ -65,6 +65,7 @@
 
     <!-- Control config popup -->
     <div v-if="selectedControl" ref="configPopup" class="floating-popup"
+      :class="{ 'is-dimmed': dragStart && dragEnd }"
       @pointerdown="startPopupDrag($event, 'configPopup')">
       <label>
         Label
@@ -600,6 +601,11 @@ export default {
   gap: 12px
   min-width: 240px
   max-width: 300px
+  transition: opacity 0.12s ease
+
+  &.is-dimmed
+    opacity: 0.5
+    pointer-events: none
 
   label
     display: flex
