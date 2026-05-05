@@ -54,12 +54,44 @@
     <div v-if="popup" ref="addPopup" class="floating-popup"
       @pointerdown="startPopupDrag($event, 'addPopup')">
       <div class="add-controls-label">Add Control</div>
-      <div class="add-controls-row">
-        <button @click="placeControl('knob')">Knob</button>
-        <button @click="placeControl('fader')">Fader</button>
-        <button @click="placeControl('button')">Button</button>
-        <button @click="placeControl('toggle')">Toggle</button>
-        <button @click="placeControl('xypad')">XY</button>
+      <div class="add-controls-grid">
+        <button @click="placeControl('knob')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="7"/>
+            <line x1="12" y1="12" x2="8" y2="8" stroke-linecap="round"/>
+          </svg>
+          <span>Knob</span>
+        </button>
+        <button @click="placeControl('fader')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <line x1="12" y1="4" x2="12" y2="20" stroke-linecap="round"/>
+            <rect x="6" y="13" width="12" height="4" rx="1" fill="currentColor" stroke="none"/>
+          </svg>
+          <span>Fader</span>
+        </button>
+        <button @click="placeControl('button')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="7"/>
+            <circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>
+          </svg>
+          <span>Button</span>
+        </button>
+        <button @click="placeControl('toggle')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="8" width="18" height="8" rx="4"/>
+            <circle cx="16" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+          </svg>
+          <span>Toggle</span>
+        </button>
+        <button @click="placeControl('xypad')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="4" y="4" width="16" height="16" rx="1"/>
+            <line x1="4" y1="9" x2="20" y2="9" stroke-dasharray="1 2" opacity="0.5"/>
+            <line x1="15" y1="4" x2="15" y2="20" stroke-dasharray="1 2" opacity="0.5"/>
+            <circle cx="15" cy="9" r="2" fill="currentColor" stroke="none"/>
+          </svg>
+          <span>XY</span>
+        </button>
       </div>
     </div>
 
@@ -650,15 +682,25 @@ export default {
   text-transform: uppercase
   letter-spacing: 1px
 
-.add-controls-row
-  display: flex
+.add-controls-grid
+  display: grid
+  grid-template-columns: repeat(3, 1fr)
   gap: 6px
-  flex-wrap: wrap
 
   button
-    flex: 1
-    min-width: 60px
-    text-align: center
+    display: flex
+    flex-direction: column
+    align-items: center
+    justify-content: center
+    gap: 6px
+    padding: 12px 6px
+    min-height: 64px
+    color: #ccc
+
+    svg
+      width: 24px
+      height: 24px
+      flex-shrink: 0
 
 // Layout mode
 .layout-overlay
