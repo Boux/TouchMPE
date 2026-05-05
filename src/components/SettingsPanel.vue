@@ -265,7 +265,7 @@
         </template>
       </div>
 
-      <footer class="settings-build">build 10</footer>
+      <footer class="settings-build">build 11</footer>
     </div>
 
     <!-- Calibration overlay -->
