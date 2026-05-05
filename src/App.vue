@@ -37,7 +37,15 @@
     <SettingsPanel
       v-if="settingsOpen"
       :settings="settings"
+      :midi-outputs="midiOutputs"
+      :midi-inputs="midiInputs"
+      :midi-output-name="midiOutputName"
+      :midi-input-name="midiInputName"
       @update="onSettingsUpdate"
+      @select-output="onSelectOutput"
+      @select-input="onSelectInput"
+      @toggle-mpe="onToggleMpe"
+      @panic="onPanic"
       @close="settingsOpen = false"
     />
   </div>
