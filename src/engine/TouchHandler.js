@@ -30,6 +30,7 @@ export default class TouchHandler {
     this.deadZonePx = 5 // pixels of movement before bend starts
     this.mpeMode = true
     this.slideHighlight = 'follow'
+    this.slideBehavior = 'hold'
 
     this._onPointerDown = this._onPointerDown.bind(this)
     this._onPointerMove = this._onPointerMove.bind(this)
@@ -63,6 +64,7 @@ export default class TouchHandler {
     this.timbreDistance = settings.timbreDistance || 1
     this.mpeMode = settings.mpeMode !== false
     this.slideHighlight = settings.slideHighlight || 'follow'
+    this.slideBehavior = settings.slideBehavior || 'hold'
   }
 
   tickGravity() {
@@ -222,6 +224,38 @@ export default class TouchHandler {
     this.grid.setTouchActive(hit.row, hit.col, true, 0, timbreNorm, velocity, hit.centerX, pos.y, 0, hit.row, hit.col)
   }
 
+  _retriggerToPad(pointerId, hit, pos, e) {
+    const touch = this.touches.get(pointerId)
+    if (!touch) return
+
+    this.engine.noteOff(pointerId)
+    this.grid.setTouchActive(touch.row, touch.col, false, 0, 0.5, 0, 0, 0)
+    this.grid.clearTouchOrigin(pointerId)
+
+    const velocity = this._getVelocity(e)
+    const channel = this.engine.noteOn(pointerId, hit.note, velocity, 0.5)
+
+    touch.channel = channel
+    touch.note = hit.note
+    touch.row = hit.row
+    touch.col = hit.col
+    touch.currentRow = hit.row
+    touch.currentCol = hit.col
+    touch.padCenterX = hit.centerX
+    touch.padCenterY = hit.centerY
+    touch.padSpacing = hit.width + this.grid.gap
+    touch.rowSpacing = hit.height + this.grid.gap
+    touch.currentX = pos.x
+    touch.currentY = pos.y
+    touch.lastRawBend = 0
+    touch.gravityOffset = 0
+    touch.movementWeight = 0
+    touch.lastBendTime = performance.now()
+
+    this.grid.setTouchOrigin(pointerId, hit.row, hit.col)
+    this.grid.setTouchActive(hit.row, hit.col, true, 0, 0.5, velocity, hit.centerX, pos.y, 0, hit.row, hit.col)
+  }
+
   _resolveCurrentPad(touch, pitchX) {
     if (!this.mpeMode || this.slideHighlight !== 'follow') return
     const target = this.grid.hitTest(pitchX, touch.padCenterY)
@@ -244,6 +278,15 @@ export default class TouchHandler {
     const pos = filter ? filter.filterPos(rawPos.x, rawPos.y, now) : rawPos
     const rawPressure = this._getPressure(e)
     const pressure = filter ? filter.filterPressure(rawPressure, now) : rawPressure
+
+    // MIDI mode retrigger: cross to a new pad → note-off old, note-on new
+    if (!this.mpeMode && this.slideBehavior === 'retrigger') {
+      const hit = this.grid.hitTest(pos.x, pos.y)
+      if (hit && hit.note !== touch.note) {
+        this._retriggerToPad(e.pointerId, hit, pos, e)
+        return
+      }
+    }
 
     touch.currentX = pos.x
     touch.currentY = pos.y

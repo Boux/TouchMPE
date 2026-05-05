@@ -20,224 +20,249 @@
       </nav>
 
       <div class="settings-body">
-        <section v-show="activeTab === 'layout'" class="settings-section">
-          <label>
-            Pad Size
-            <div class="slider-group">
-              <input type="range" :value="settings.padScale" min="0.5" max="2.0" step="0.05"
-                @input="update('padScale', +$event.target.value)" />
-              <span class="slider-value">{{ (settings.padScale || 1).toFixed(2) }}x</span>
-            </div>
-          </label>
-
-          <label>
-            Root Note
-            <div class="compound-input">
-              <select :value="rootPitchClass" @change="updateRootNote(+$event.target.value, rootOctave)">
-                <option v-for="(name, i) in noteNames" :key="i" :value="i">{{ name }}</option>
-              </select>
-              <input type="number" :value="rootOctave" min="-1" max="8"
-                @change="updateRootNote(rootPitchClass, +$event.target.value)" />
-            </div>
-          </label>
-
-          <label>
-            Row Offset (semitones)
-            <input type="number" :value="settings.rowOffset" min="1" max="12"
-              @change="update('rowOffset', +$event.target.value)" />
-          </label>
-
-          <label>
-            Col Offset (semitones)
-            <input type="number" :value="settings.colOffset" min="1" max="12"
-              @change="update('colOffset', +$event.target.value)" />
-          </label>
-
-          <label>
-            Scale
-            <select :value="settings.scale"
-              @change="update('scale', $event.target.value)">
-              <option value="chromatic">Chromatic</option>
-              <option value="major">Major</option>
-              <option value="minor">Minor</option>
-              <option value="pentatonic">Pentatonic</option>
-              <option value="blues">Blues</option>
-              <option value="dorian">Dorian</option>
-              <option value="mixolydian">Mixolydian</option>
-            </select>
-          </label>
-
-          <label>
-            Scale Root
-            <select :value="settings.scaleRoot"
-              @change="update('scaleRoot', +$event.target.value)">
-              <option v-for="(name, i) in noteNames" :key="i" :value="i">{{ name }}</option>
-            </select>
-          </label>
-
-          <button class="reset-btn" @click="resetLayout">Reset Layout</button>
-        </section>
-
-        <section v-show="activeTab === 'touch' && settings.mpeMode !== false" class="settings-section">
-          <label>
-            Velocity
-            <select :value="settings.velocityMode"
-              @change="update('velocityMode', $event.target.value)">
-              <option value="area">Calibrated</option>
-              <option value="fixed">Fixed</option>
-            </select>
-          </label>
-
-          <label v-if="settings.velocityMode === 'fixed'">
-            Fixed Velocity
-            <div class="slider-group">
-              <input type="range" :value="Math.round((settings.fixedVelocity ?? 0.75) * 127)" min="1" max="127" step="1"
-                @input="update('fixedVelocity', +$event.target.value / 127)" />
-              <span class="slider-value">{{ Math.round((settings.fixedVelocity ?? 0.75) * 127) }}</span>
-            </div>
-          </label>
-
-          <div v-if="settings.velocityMode === 'area'" class="calibration-row">
-            <button class="reset-btn" @click="startCalibration">
-              {{ settings.velocityCalibration ? 'Recalibrate' : 'Calibrate Velocity' }}
-            </button>
-            <span v-if="settings.velocityCalibration" class="calibration-status">calibrated</span>
-            <button v-if="settings.velocityCalibration" class="reset-btn small-btn" @click="clearCalibration">
-              Reset
-            </button>
-          </div>
-
-          <label>
-            Note-On Pitch
-            <select :value="settings.noteOnQuantize ? 'quantize' : 'continuous'"
-              @change="update('noteOnQuantize', $event.target.value === 'quantize')">
-              <option value="quantize">Quantize</option>
-              <option value="continuous">Continuous</option>
-            </select>
-          </label>
-
-          <label>
-            Slide-To Pitch
-            <select :value="settings.slidePitchMode"
-              @change="update('slidePitchMode', $event.target.value)">
-              <option value="continuous">Continuous</option>
-              <option value="assist">Assist</option>
-              <option value="instant">Instant</option>
-            </select>
-          </label>
-
-          <template v-if="settings.slidePitchMode === 'assist'">
+        <template v-if="activeTab === 'layout'">
+          <section>
             <label>
-              Assist Strength
-              <select :value="settings.gravityPreset"
-                @change="applyGravityPreset($event.target.value)">
-                <option value="weak">Weak</option>
-                <option value="medium">Medium</option>
-                <option value="strong">Strong</option>
-                <option value="custom">Custom</option>
-              </select>
-            </label>
-
-            <template v-if="settings.gravityPreset === 'custom'">
-              <label>
-                Gravity Radius
-                <div class="slider-group">
-                  <input type="range" :value="settings.gravityRadius" min="0" max="1" step="0.05"
-                    @input="update('gravityRadius', +$event.target.value)" />
-                  <span class="slider-value">{{ (settings.gravityRadius ?? 0.5).toFixed(2) }}</span>
-                </div>
-              </label>
-
-              <label>
-                Gravity Strength
-                <div class="slider-group">
-                  <input type="range" :value="settings.gravityStrength" min="0" max="1" step="0.05"
-                    @input="update('gravityStrength', +$event.target.value)" />
-                  <span class="slider-value">{{ (settings.gravityStrength ?? 0.5).toFixed(2) }}</span>
-                </div>
-              </label>
-
-              <label>
-                Gravity Decay
-                <div class="slider-group">
-                  <input type="range" :value="settings.gravityDecay" min="0.05" max="1" step="0.05"
-                    @input="update('gravityDecay', +$event.target.value)" />
-                  <span class="slider-value">{{ (settings.gravityDecay ?? 0.5).toFixed(2) }}</span>
-                </div>
-              </label>
-            </template>
-          </template>
-
-          <label>
-            Timbre Distance
-            <div class="compound-input">
-              <input type="number" :value="settings.timbreDistance" min="1" max="8"
-                @change="update('timbreDistance', +$event.target.value)" />
-              <span class="unit">rows</span>
-            </div>
-          </label>
-
-          <label>
-            Slide Highlight
-            <select :value="settings.slideHighlight || 'follow'"
-              @change="update('slideHighlight', $event.target.value)">
-              <option value="follow">Follows Pitch</option>
-              <option value="origin">Pressed Note</option>
-            </select>
-          </label>
-        </section>
-
-        <section v-show="activeTab === 'mpe'" class="settings-section">
-          <label>
-            Mode
-            <select :value="settings.mpeMode ? 'mpe' : 'midi'"
-              @change="$emit('toggle-mpe', $event.target.value === 'mpe')">
-              <option value="mpe">MPE</option>
-              <option value="midi">MIDI</option>
-            </select>
-          </label>
-
-          <label>
-            MIDI Output
-            <select :value="selectedOutputId"
-              @change="$emit('select-output', $event.target.value)">
-              <option value="" disabled>Select...</option>
-              <option v-for="output in midiOutputs" :key="output.id" :value="output.id">
-                {{ output.name }}
-              </option>
-            </select>
-          </label>
-
-          <label>
-            MIDI Input
-            <select :value="selectedInputId"
-              @change="$emit('select-input', $event.target.value)">
-              <option value="">None</option>
-              <option v-for="input in midiInputs" :key="input.id" :value="input.id">
-                {{ input.name }}
-              </option>
-            </select>
-          </label>
-
-          <template v-if="settings.mpeMode !== false">
-            <label>
-              Pitch Bend Range
-              <div class="compound-input">
-                <input type="number" :value="settings.pitchBendRange" min="1" max="96"
-                  @change="update('pitchBendRange', +$event.target.value)" />
-                <span class="unit">st</span>
+              Pad Size
+              <div class="slider-group">
+                <input type="range" :value="settings.padScale" min="0.5" max="2.0" step="0.05"
+                  @input="update('padScale', +$event.target.value)" />
+                <span class="slider-value">{{ (settings.padScale || 1).toFixed(2) }}x</span>
               </div>
             </label>
 
             <label>
-              Member Channels
-              <input type="number" :value="settings.memberChannels" min="1" max="15"
-                @change="update('memberChannels', +$event.target.value)" />
+              Root Note
+              <div class="compound-input">
+                <select :value="rootPitchClass" @change="updateRootNote(+$event.target.value, rootOctave)">
+                  <option v-for="(name, i) in noteNames" :key="i" :value="i">{{ name }}</option>
+                </select>
+                <input type="number" :value="rootOctave" min="-1" max="8"
+                  @change="updateRootNote(rootPitchClass, +$event.target.value)" />
+              </div>
             </label>
-          </template>
 
-          <button class="panic-btn" @click="$emit('panic')">Panic (All Notes Off)</button>
-        </section>
+            <label>
+              Row Offset (semitones)
+              <input type="number" :value="settings.rowOffset" min="1" max="12"
+                @change="update('rowOffset', +$event.target.value)" />
+            </label>
+
+            <label>
+              Col Offset (semitones)
+              <input type="number" :value="settings.colOffset" min="1" max="12"
+                @change="update('colOffset', +$event.target.value)" />
+            </label>
+
+            <label>
+              Scale
+              <select :value="settings.scale"
+                @change="update('scale', $event.target.value)">
+                <option value="chromatic">Chromatic</option>
+                <option value="major">Major</option>
+                <option value="minor">Minor</option>
+                <option value="pentatonic">Pentatonic</option>
+                <option value="blues">Blues</option>
+                <option value="dorian">Dorian</option>
+                <option value="mixolydian">Mixolydian</option>
+              </select>
+            </label>
+
+            <label>
+              Scale Root
+              <select :value="settings.scaleRoot"
+                @change="update('scaleRoot', +$event.target.value)">
+                <option v-for="(name, i) in noteNames" :key="i" :value="i">{{ name }}</option>
+              </select>
+            </label>
+
+            <button class="reset-btn" @click="resetLayout">Reset Layout</button>
+          </section>
+        </template>
+
+        <template v-if="activeTab === 'touch'">
+          <section>
+            <h3>Velocity</h3>
+
+            <label>
+              Velocity
+              <select :value="settings.velocityMode"
+                @change="update('velocityMode', $event.target.value)">
+                <option value="area">Calibrated</option>
+                <option value="fixed">Fixed</option>
+              </select>
+            </label>
+
+            <label v-if="settings.velocityMode === 'fixed'">
+              Fixed Velocity
+              <div class="slider-group">
+                <input type="range" :value="Math.round((settings.fixedVelocity ?? 0.75) * 127)" min="1" max="127" step="1"
+                  @input="update('fixedVelocity', +$event.target.value / 127)" />
+                <span class="slider-value">{{ Math.round((settings.fixedVelocity ?? 0.75) * 127) }}</span>
+              </div>
+            </label>
+
+            <div v-if="settings.velocityMode === 'area'" class="calibration-row">
+              <button class="reset-btn" @click="startCalibration">
+                {{ settings.velocityCalibration ? 'Recalibrate' : 'Calibrate Velocity' }}
+              </button>
+              <span v-if="settings.velocityCalibration" class="calibration-status">calibrated</span>
+              <button v-if="settings.velocityCalibration" class="reset-btn small-btn" @click="clearCalibration">
+                Reset
+              </button>
+            </div>
+          </section>
+
+          <section>
+            <h3>MPE</h3>
+
+            <label>
+              Note-On Pitch
+              <select :value="settings.noteOnQuantize ? 'quantize' : 'continuous'"
+                @change="update('noteOnQuantize', $event.target.value === 'quantize')">
+                <option value="quantize">Quantize</option>
+                <option value="continuous">Continuous</option>
+              </select>
+            </label>
+
+            <label>
+              Slide-To Pitch
+              <select :value="settings.slidePitchMode"
+                @change="update('slidePitchMode', $event.target.value)">
+                <option value="continuous">Continuous</option>
+                <option value="assist">Assist</option>
+                <option value="instant">Instant</option>
+              </select>
+            </label>
+
+            <template v-if="settings.slidePitchMode === 'assist'">
+              <label>
+                Assist Strength
+                <select :value="settings.gravityPreset"
+                  @change="applyGravityPreset($event.target.value)">
+                  <option value="weak">Weak</option>
+                  <option value="medium">Medium</option>
+                  <option value="strong">Strong</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </label>
+
+              <template v-if="settings.gravityPreset === 'custom'">
+                <label>
+                  Gravity Radius
+                  <div class="slider-group">
+                    <input type="range" :value="settings.gravityRadius" min="0" max="1" step="0.05"
+                      @input="update('gravityRadius', +$event.target.value)" />
+                    <span class="slider-value">{{ (settings.gravityRadius ?? 0.5).toFixed(2) }}</span>
+                  </div>
+                </label>
+
+                <label>
+                  Gravity Strength
+                  <div class="slider-group">
+                    <input type="range" :value="settings.gravityStrength" min="0" max="1" step="0.05"
+                      @input="update('gravityStrength', +$event.target.value)" />
+                    <span class="slider-value">{{ (settings.gravityStrength ?? 0.5).toFixed(2) }}</span>
+                  </div>
+                </label>
+
+                <label>
+                  Gravity Decay
+                  <div class="slider-group">
+                    <input type="range" :value="settings.gravityDecay" min="0.05" max="1" step="0.05"
+                      @input="update('gravityDecay', +$event.target.value)" />
+                    <span class="slider-value">{{ (settings.gravityDecay ?? 0.5).toFixed(2) }}</span>
+                  </div>
+                </label>
+              </template>
+            </template>
+
+            <label>
+              Timbre Distance
+              <div class="compound-input">
+                <input type="number" :value="settings.timbreDistance" min="1" max="8"
+                  @change="update('timbreDistance', +$event.target.value)" />
+                <span class="unit">rows</span>
+              </div>
+            </label>
+
+            <label>
+              Slide Highlight
+              <select :value="settings.slideHighlight || 'follow'"
+                @change="update('slideHighlight', $event.target.value)">
+                <option value="follow">Follows Pitch</option>
+                <option value="origin">Pressed Note</option>
+              </select>
+            </label>
+          </section>
+
+          <section>
+            <h3>MIDI</h3>
+
+            <label>
+              Slide Behavior
+              <select :value="settings.slideBehavior || 'hold'"
+                @change="update('slideBehavior', $event.target.value)">
+                <option value="hold">Hold Note</option>
+                <option value="retrigger">Retrigger</option>
+              </select>
+            </label>
+          </section>
+        </template>
+
+        <template v-if="activeTab === 'mpe'">
+          <section>
+            <label>
+              Mode
+              <select :value="settings.mpeMode ? 'mpe' : 'midi'"
+                @change="$emit('toggle-mpe', $event.target.value === 'mpe')">
+                <option value="mpe">MPE</option>
+                <option value="midi">MIDI</option>
+              </select>
+            </label>
+
+            <label>
+              MIDI Output
+              <select :value="selectedOutputId"
+                @change="$emit('select-output', $event.target.value)">
+                <option value="" disabled>Select...</option>
+                <option v-for="output in midiOutputs" :key="output.id" :value="output.id">
+                  {{ output.name }}
+                </option>
+              </select>
+            </label>
+
+            <label>
+              MIDI Input
+              <select :value="selectedInputId"
+                @change="$emit('select-input', $event.target.value)">
+                <option value="">None</option>
+                <option v-for="input in midiInputs" :key="input.id" :value="input.id">
+                  {{ input.name }}
+                </option>
+              </select>
+            </label>
+
+            <template v-if="settings.mpeMode !== false">
+              <label>
+                Pitch Bend Range
+                <div class="compound-input">
+                  <input type="number" :value="settings.pitchBendRange" min="1" max="96"
+                    @change="update('pitchBendRange', +$event.target.value)" />
+                  <span class="unit">st</span>
+                </div>
+              </label>
+
+              <label>
+                Member Channels
+                <input type="number" :value="settings.memberChannels" min="1" max="15"
+                  @change="update('memberChannels', +$event.target.value)" />
+              </label>
+            </template>
+
+            <button class="panic-btn" @click="$emit('panic')">Panic (All Notes Off)</button>
+          </section>
+        </template>
       </div>
 
       <footer class="settings-build">build 10</footer>
@@ -287,12 +312,11 @@ export default {
 
   computed: {
     tabs() {
-      const list = [{ id: 'layout', label: 'Layout' }]
-      if (this.settings.mpeMode !== false) {
-        list.push({ id: 'touch', label: 'Touch' })
-      }
-      list.push({ id: 'mpe', label: 'MIDI' })
-      return list
+      return [
+        { id: 'layout', label: 'Layout' },
+        { id: 'touch', label: 'Touch' },
+        { id: 'mpe', label: 'MIDI' }
+      ]
     },
 
     selectedOutputId() {
@@ -488,9 +512,22 @@ export default {
 .settings-body
   flex: 1
   overflow-y: auto
-  padding: 16px
 
-.settings-section
+  section
+    padding: 16px
+    border-top: 1px solid #333
+
+    &:first-child
+      border-top: none
+
+  h3
+    font-size: 12px
+    color: #888
+    text-transform: uppercase
+    letter-spacing: 1.5px
+    margin: 0 0 12px
+    font-weight: 600
+
   label
     display: flex
     justify-content: space-between
@@ -509,7 +546,8 @@ export default {
     min-height: 40px
 
   select
-    width: 120px
+    width: 160px
+    font-size: 14px
     appearance: none
     -webkit-appearance: none
     -moz-appearance: none

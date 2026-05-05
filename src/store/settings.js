@@ -32,7 +32,8 @@ const DEFAULTS = {
   gravityDecay: 0.4,
   pressureMode: 'auto',
   timbreDistance: 1,
-  slideHighlight: 'follow' // 'follow' = highlight tracks pitch; 'origin' = highlight stays on pressed pad
+  slideHighlight: 'follow', // 'follow' = highlight tracks pitch; 'origin' = highlight stays on pressed pad
+  slideBehavior: 'hold' // 'hold' = stay on pressed note; 'retrigger' = note-off/on as finger crosses pads (non-MPE mode)
 }
 
 /**
