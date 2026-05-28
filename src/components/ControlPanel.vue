@@ -77,8 +77,8 @@
             @input="selectedControl.cc_num[key] = +$event.target.value; saveConfig(); markDirty()" />
         </label>
         <div class="config-actions">
-          <button class="change-config-btn" @click="changeMode = true">Change</button>
-          <button class="delete-config-btn" @click="deleteControl(selectedControl.id)">Delete</button>
+          <button class="btn" @click="changeMode = true">Change</button>
+          <button class="btn btn-danger" @click="deleteControl(selectedControl.id)">Delete</button>
         </div>
       </template>
       <template v-else>
@@ -91,7 +91,7 @@
             <span>{{ t.label }}</span>
           </button>
         </div>
-        <button class="cancel-config-btn" @click="changeMode = false">Cancel</button>
+        <button class="btn" @click="changeMode = false">Cancel</button>
       </template>
     </div>
   </div>
@@ -562,7 +562,7 @@ export default {
 
 <style lang="sass">
 .control-panel
-  background: #1a1a1a
+  background: var(--color-bg)
   display: flex
   flex-direction: column
   flex-shrink: 0
@@ -570,21 +570,21 @@ export default {
   overflow: hidden
 
   &.dock-left
-    border-right: 1px solid #333
+    border-right: var(--border-hairline) solid var(--color-border)
   &.dock-right
-    border-left: 1px solid #333
+    border-left: var(--border-hairline) solid var(--color-border)
   &.dock-top
-    border-bottom: 1px solid #333
+    border-bottom: var(--border-hairline) solid var(--color-border)
   &.dock-bottom
-    border-top: 1px solid #333
+    border-top: var(--border-hairline) solid var(--color-border)
 
 .panel-toolbar
   display: flex
   align-items: center
-  gap: 6px
-  padding: 4px 6px
-  background: #222
-  border-bottom: 1px solid #333
+  gap: var(--space-2)
+  padding: var(--space-1) var(--space-2)
+  background: var(--color-surface)
+  border-bottom: var(--border-hairline) solid var(--color-border)
   flex-shrink: 0
 
 .panel-toolbar-spacer
@@ -593,42 +593,42 @@ export default {
 .panel-toolbar-slider
   display: flex
   align-items: center
-  gap: 4px
+  gap: var(--space-1)
   flex: 1
   min-width: 0
 
   input[type="range"]
     flex: 1
     min-width: 40px
-    accent-color: var(--accent)
+    accent-color: var(--color-accent)
     height: 24px
 
 .layout-toggle
   width: 28px
   height: 28px
-  padding: 4px
-  background: #333
-  border: 1px solid #444
-  border-radius: 4px
-  color: #888
+  padding: var(--space-1)
+  background: var(--color-surface-3)
+  border: var(--border-hairline) solid var(--color-border-strong)
+  border-radius: var(--radius-sm)
+  color: var(--color-text-muted)
   cursor: pointer
   display: flex
   align-items: center
   justify-content: center
   flex-shrink: 0
 
-  &:hover
-    background: #444
-    color: #ccc
-
-  &.active
-    background: var(--accent)
-    color: #000
-    border-color: var(--accent)
-
   svg
     width: 16px
     height: 16px
+
+  &:hover
+    background: var(--color-border-strong)
+    color: var(--color-text)
+
+  &.active
+    background: var(--color-accent)
+    color: var(--color-accent-text)
+    border-color: var(--color-accent)
 
 .grid-canvas
   flex: 1
@@ -648,16 +648,16 @@ export default {
   top: 0
   z-index: 201
   touch-action: none
-  background: #222
-  border: 1px solid #444
-  border-radius: 8px
-  padding: 16px
+  background: var(--color-surface)
+  border: var(--border-hairline) solid var(--color-border-strong)
+  border-radius: var(--radius-lg)
+  padding: var(--space-4)
   display: flex
   flex-direction: column
-  gap: 12px
+  gap: var(--space-3)
   min-width: 240px
   max-width: 300px
-  transition: opacity 0.12s ease
+  transition: opacity var(--transition-fast)
 
   &.is-dimmed
     opacity: 0.5
@@ -667,69 +667,39 @@ export default {
     display: flex
     justify-content: space-between
     align-items: center
-    font-size: 14px
-    color: #aaa
+    font-size: var(--text-md)
+    color: var(--color-text-secondary)
 
   input[type="text"], input[type="number"]
-    background: #333
-    color: #ccc
-    border: 1px solid #444
-    border-radius: 6px
-    padding: 8px 10px
-    font-size: 16px
-    min-height: 40px
     width: 100px
-
-  button
-    background: #333
-    color: #ccc
-    border: 1px solid #444
-    border-radius: 6px
-    padding: 10px
-    font-size: 14px
-    cursor: pointer
-    min-height: 40px
-
-    &:hover
-      background: #444
-
-  .delete-config-btn
-    color: #f66
-    border-color: #633
-
-    &:hover
-      background: #622
 
   .config-actions
     display: flex
-    gap: 6px
+    gap: var(--space-2)
 
-    button
+    .btn
       flex: 1
 
-  .cancel-config-btn
-    color: #888
-
 .add-controls-label
-  font-size: 13px
-  color: #888
+  font-size: var(--text-sm)
+  color: var(--color-text-muted)
   text-transform: uppercase
   letter-spacing: 1px
 
 .add-controls-grid
   display: grid
   grid-template-columns: repeat(3, 1fr)
-  gap: 6px
+  gap: var(--space-2)
 
   button
     display: flex
     flex-direction: column
     align-items: center
     justify-content: center
-    gap: 6px
-    padding: 12px 6px
+    gap: var(--space-2)
+    padding: var(--space-3) var(--space-2)
     min-height: 64px
-    color: #ccc
+    color: var(--color-text)
 
     svg
       width: 24px
@@ -737,33 +707,29 @@ export default {
       flex-shrink: 0
 
     &.is-current
-      border-color: var(--accent)
-      color: var(--accent)
+      border-color: var(--color-accent)
+      color: var(--color-accent)
 
-// Layout mode
 .layout-overlay
   position: absolute
   inset: 0
-  z-index: 30
+  z-index: var(--z-controls)
   display: flex
 
   .dock-left &, .dock-right &
     flex-direction: row
-
   .dock-top &, .dock-bottom &
     flex-direction: column
-
   .dock-right &
     flex-direction: row-reverse
-
   .dock-bottom &
     flex-direction: column-reverse
 
 .layout-drag-area
   flex: 1
-  background: color-mix(in srgb, var(--accent) 12%, transparent)
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent)
   backdrop-filter: blur(4px)
-  border: 3px dashed var(--accent)
+  border: var(--border-strip) dashed var(--color-accent)
   cursor: grab
   display: flex
   align-items: center
@@ -771,35 +737,35 @@ export default {
 
   .is-dragging &
     cursor: grabbing
-    background: color-mix(in srgb, var(--accent) 25%, transparent)
+    background: color-mix(in srgb, var(--color-accent) 25%, transparent)
 
 .layout-overlay-text
-  font-size: 16px
-  font-weight: 600
-  color: var(--accent)
-  text-transform: uppercase
-  letter-spacing: 2px
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6)
   display: flex
   flex-direction: column
   align-items: center
-  gap: 12px
+  gap: var(--space-3)
+  font-size: var(--text-lg)
+  font-weight: 600
+  color: var(--color-accent)
+  text-transform: uppercase
+  letter-spacing: 2px
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6)
   pointer-events: none
 
 .layout-done-btn
   pointer-events: auto
-  background: var(--accent)
-  color: #000
+  background: var(--color-accent)
+  color: var(--color-accent-text)
   border: none
-  border-radius: 6px
-  padding: 8px 24px
-  font-size: 14px
+  border-radius: var(--radius-md)
+  padding: var(--space-2) var(--space-5)
+  font-size: var(--text-md)
   font-weight: 600
   cursor: pointer
 
 .layout-resize-edge
-  background: #2a2a2a
-  border: 2px dotted var(--accent)
+  background: var(--color-surface-2)
+  border: var(--border-thick) dotted var(--color-accent)
   display: flex
   align-items: center
   justify-content: center
@@ -807,24 +773,22 @@ export default {
 
   &::after
     content: ''
-    border-radius: 2px
-    background: var(--accent)
+    border-radius: var(--radius-sm)
+    background: var(--color-accent)
     opacity: 0.6
 
   .dock-right &, .dock-left &
     width: 18px
     cursor: ew-resize
     flex-direction: column
-
     &::after
-      width: 3px
+      width: var(--border-strip)
       height: 32px
 
   .dock-top &, .dock-bottom &
     height: 18px
     cursor: ns-resize
-
     &::after
-      height: 3px
+      height: var(--border-strip)
       width: 32px
 </style>

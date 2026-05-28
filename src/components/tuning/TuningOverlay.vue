@@ -1,6 +1,6 @@
 <template>
-  <div class="tuning-overlay" @pointerdown.self="$emit('close')">
-    <div class="tuning-modal" @pointerdown.stop>
+  <div class="modal-overlay tuning-overlay" @pointerdown.self="$emit('close')">
+    <div class="modal tuning-modal" @pointerdown.stop>
       <DragNumber
         class="tuning-root"
         axis="x"
@@ -154,137 +154,119 @@ export default {
 </script>
 
 <style lang="sass">
-.tuning-overlay
-  position: fixed
-  inset: 0
-  background: rgba(0, 0, 0, 0.55)
-  z-index: 95
-  display: flex
-  align-items: center
-  justify-content: center
-  padding: 24px
-
 .tuning-modal
   width: min(360px, 100%)
   max-height: 90vh
   overflow-y: auto
-  background: #222
-  border: 1px solid #444
-  border-radius: 12px
-  padding: 20px
-  display: flex
-  flex-direction: column
-  gap: 16px
+  padding: var(--space-4)
+  gap: var(--space-4)
+  z-index: var(--z-tuning)
 
 .tuning-root
-  font-size: 36px
+  font-size: var(--text-display)
   font-weight: 600
-  color: var(--accent)
-  padding: 14px 0
-  background: #1a1a1a
-  border-radius: 8px
+  color: var(--color-accent)
+  padding: var(--space-3) 0
+  background: var(--color-bg)
+  border-radius: var(--radius-lg)
   font-variant-numeric: tabular-nums
 
 .tuning-globals
   display: flex
-  gap: 10px
+  gap: var(--space-2)
 
 .tuning-global
   flex: 1
   display: flex
   align-items: center
   justify-content: space-between
-  background: #1a1a1a
-  border-radius: 8px
-  padding: 10px 14px
+  background: var(--color-bg)
+  border-radius: var(--radius-lg)
+  padding: var(--space-2) var(--space-3)
 
   .label
-    font-size: 12px
-    color: #888
+    font-size: var(--text-sm)
+    color: var(--color-text-muted)
     text-transform: uppercase
     letter-spacing: 1px
 
   .value
-    font-size: 18px
-    color: #ccc
+    font-size: var(--text-xl)
     font-variant-numeric: tabular-nums
     min-width: 32px
 
 .tuning-rows
   display: flex
   flex-direction: column
-  gap: 3px
+  gap: var(--space-1)
 
 .tuning-row
   display: flex
   align-items: center
-  background: #2a2a2a
-  border-radius: 6px
-  padding: 8px 12px
+  background: var(--color-surface-2)
+  border-radius: var(--radius-md)
+  padding: var(--space-2) var(--space-3)
   min-height: 40px
-  gap: 8px
+  gap: var(--space-2)
 
   .note
     flex: 1
-    font-size: 14px
-    color: #ccc
+    font-size: var(--text-md)
     font-variant-numeric: tabular-nums
 
   .delta
-    font-size: 16px
-    color: #888
+    font-size: var(--text-lg)
+    color: var(--color-text-muted)
     font-variant-numeric: tabular-nums
     min-width: 36px
-    padding: 4px 8px
-    border-radius: 4px
+    padding: var(--space-1) var(--space-2)
+    border-radius: var(--radius-sm)
 
     &.overridden
-      color: var(--accent)
+      color: var(--color-accent)
       background: rgba(0, 0, 0, 0.3)
 
   .reset
     background: none
     border: none
-    color: #888
-    font-size: 16px
+    color: var(--color-text-muted)
+    font-size: var(--text-lg)
     cursor: pointer
-    padding: 4px 6px
+    padding: var(--space-1) var(--space-2)
     line-height: 1
 
     &:hover
-      color: #ccc
+      color: var(--color-text)
 
   &.root
-    background: #1a1a1a
+    background: var(--color-bg)
 
     .note
-      color: var(--accent)
-
+      color: var(--color-accent)
     .root-label
-      font-size: 11px
-      color: #666
+      font-size: var(--text-xs)
+      color: var(--color-text-faint)
       text-transform: uppercase
       letter-spacing: 1px
 
 .tuning-presets
   display: flex
   flex-wrap: wrap
-  gap: 6px
+  gap: var(--space-2)
 
   button
-    background: #333
-    color: #ccc
-    border: 1px solid #444
-    border-radius: 999px
-    padding: 6px 14px
-    font-size: 12px
+    background: var(--color-surface-3)
+    color: var(--color-text)
+    border: var(--border-hairline) solid var(--color-border-strong)
+    border-radius: var(--radius-pill)
+    padding: var(--space-2) var(--space-3)
+    font-size: var(--text-sm)
     cursor: pointer
 
     &:hover
-      background: #3a3a3a
-
+      background: var(--color-surface-hover)
     &.active
-      background: var(--accent)
-      color: #000
-      border-color: var(--accent)
+      background: var(--color-accent)
+      color: var(--color-accent-text)
+      border-color: var(--color-accent)
 </style>

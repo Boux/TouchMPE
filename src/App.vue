@@ -191,34 +191,13 @@ export default {
     },
 
     _applyAccentColor(color) {
-      document.documentElement.style.setProperty('--accent', color)
+      document.documentElement.style.setProperty('--color-accent', color)
     }
   }
 }
 </script>
 
 <style lang="sass">
-*
-  margin: 0
-  padding: 0
-  box-sizing: border-box
-
-\:root
-  --accent-default: #ff8800
-  --accent: var(--accent-default)
-
-html, body
-  width: 100%
-  height: 100%
-  overflow: hidden
-  background: #1a1a1a
-  color: #ccc
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
-
-#app
-  width: 100%
-  height: 100%
-
 .app
   display: flex
   flex-direction: column
@@ -232,13 +211,10 @@ html, body
 
   &.dock-left
     flex-direction: row-reverse
-
   &.dock-right
     flex-direction: row
-
   &.dock-top
     flex-direction: column-reverse
-
   &.dock-bottom
     flex-direction: column
 </style>

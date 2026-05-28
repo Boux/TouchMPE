@@ -1,0 +1,176 @@
+// ─────────────────────────────────────────────────────────────────
+// design tokens — TouchMPE
+// ─────────────────────────────────────────────────────────────────
+:root
+  // colors
+  --color-bg:              #1a1a1a
+  --color-bg-tab:          #1d1d1d
+  --color-surface:         #222
+  --color-surface-2:       #2a2a2a
+  --color-surface-3:       #333
+  --color-surface-hover:   #3a3a3a
+  --color-border:          #333
+  --color-border-strong:   #444
+  --color-text:            #ccc
+  --color-text-secondary:  #aaa
+  --color-text-muted:      #888
+  --color-text-faint:      #666
+  --color-text-strong:     #fff
+  --color-text-dim:        #555
+  --color-accent-default:  #ff8800
+  --color-accent:          var(--color-accent-default)
+  --color-accent-text:     #000
+  --color-danger:          #f66
+  --color-danger-bg:       #622
+  --color-danger-border:   #633
+  --color-success:         #4c4
+  --color-overlay:         rgba(0, 0, 0, 0.55)
+
+  --space-1: 4px
+  --space-2: 8px
+  --space-3: 12px
+  --space-4: 16px
+  --space-5: 24px
+  --space-6: 32px
+
+  --radius-sm:     4px
+  --radius-md:     6px
+  --radius-lg:     8px
+  --radius-xl:     12px
+  --radius-pill:   999px
+  --radius-circle: 50%
+
+  --border-hairline: 1px
+  --border-thick:    2px
+  --border-strip:    3px
+
+  --text-xs:      11px
+  --text-sm:      13px
+  --text-md:      14px
+  --text-lg:      16px
+  --text-xl:      18px
+  --text-2xl:     28px
+  --text-display: 36px
+
+  --transition-fast: 0.12s ease
+
+  --z-controls:    30
+  --z-overlay:     90
+  --z-tuning:      95
+  --z-dialog:      100
+  --z-calibration: 200
+
+  --shadow-elevation: 0 20px 60px rgba(0, 0, 0, 0.5)
+
+  --control-min-h: 40px
+
+// ─────────────────────────────────────────────────────────────────
+// reset + base
+// ─────────────────────────────────────────────────────────────────
+*, *::before, *::after
+  box-sizing: border-box
+  margin: 0
+  padding: 0
+
+html, body
+  width: 100%
+  height: 100%
+  overflow: hidden
+  background: var(--color-bg)
+  color: var(--color-text)
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
+
+#app
+  width: 100%
+  height: 100%
+
+// ─────────────────────────────────────────────────────────────────
+// form elements — applied broadly
+// ─────────────────────────────────────────────────────────────────
+button, input, textarea, select
+  font: inherit
+  color: inherit
+
+select, input[type="number"], input[type="text"]
+  background: var(--color-surface-3)
+  color: var(--color-text)
+  border: var(--border-hairline) solid var(--color-border-strong)
+  border-radius: var(--radius-md)
+  padding: var(--space-2) var(--space-3)
+  font-size: var(--text-lg)
+  min-height: var(--control-min-h)
+
+select
+  font-size: var(--text-md)
+  appearance: none
+  -webkit-appearance: none
+  -moz-appearance: none
+  padding-right: 30px
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23888' stroke-width='1.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E")
+  background-repeat: no-repeat
+  background-position: right 10px center
+
+// ─────────────────────────────────────────────────────────────────
+// modal / overlay
+// ─────────────────────────────────────────────────────────────────
+.modal-overlay
+  position: fixed
+  inset: 0
+  background: var(--color-overlay)
+  display: flex
+  align-items: center
+  justify-content: center
+  padding: var(--space-5)
+
+.modal
+  background: var(--color-surface)
+  border: var(--border-hairline) solid var(--color-border-strong)
+  border-radius: var(--radius-xl)
+  display: flex
+  flex-direction: column
+
+// ─────────────────────────────────────────────────────────────────
+// buttons
+// ─────────────────────────────────────────────────────────────────
+.btn
+  background: var(--color-surface-3)
+  color: var(--color-text)
+  border: var(--border-hairline) solid var(--color-border-strong)
+  border-radius: var(--radius-md)
+  padding: var(--space-2) var(--space-3)
+  font-size: var(--text-md)
+  cursor: pointer
+  min-height: var(--control-min-h)
+
+  &:hover
+    background: var(--color-border-strong)
+
+  &.btn-accent
+    background: var(--color-accent)
+    color: var(--color-accent-text)
+    border-color: var(--color-accent)
+
+  &.btn-danger
+    color: var(--color-danger)
+    border-color: var(--color-danger-border)
+    &:hover
+      background: var(--color-danger-bg)
+
+  &.btn-block
+    width: 100%
+    text-align: left
+
+.icon-btn
+  background: none
+  border: none
+  color: var(--color-text-muted)
+  cursor: pointer
+  display: flex
+  align-items: center
+  justify-content: center
+  min-width: var(--control-min-h)
+  min-height: var(--control-min-h)
+  padding: var(--space-2)
+
+  &:hover
+    color: var(--color-text-strong)

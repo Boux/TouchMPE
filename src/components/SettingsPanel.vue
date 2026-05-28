@@ -1,9 +1,9 @@
 <template>
-  <div class="settings-overlay" @click.self="$emit('close')">
-    <div class="settings-modal">
+  <div class="modal-overlay" @click.self="$emit('close')">
+    <div class="modal settings-modal">
       <header class="settings-header">
         <h2>Settings</h2>
-        <button class="close-btn" @click="$emit('close')" aria-label="Close">
+        <button class="icon-btn" @click="$emit('close')" aria-label="Close">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <line x1="6" y1="6" x2="18" y2="18"/>
             <line x1="18" y1="6" x2="6" y2="18"/>
@@ -64,7 +64,7 @@
               </select>
             </label>
 
-            <button class="reset-btn" @click="resetLayout">Reset Layout</button>
+            <button class="btn" @click="resetLayout">Reset Layout</button>
           </section>
         </template>
 
@@ -91,11 +91,11 @@
             </label>
 
             <div v-if="settings.velocityMode === 'area'" class="calibration-row">
-              <button class="reset-btn" @click="startCalibration">
+              <button class="btn" @click="startCalibration">
                 {{ settings.velocityCalibration ? 'Recalibrate' : 'Calibrate Velocity' }}
               </button>
               <span v-if="settings.velocityCalibration" class="calibration-status">calibrated</span>
-              <button v-if="settings.velocityCalibration" class="reset-btn small-btn" @click="clearCalibration">
+              <button v-if="settings.velocityCalibration" class="btn small-btn" @click="clearCalibration">
                 Reset
               </button>
             </div>
@@ -248,7 +248,7 @@
               </label>
             </template>
 
-            <button class="panic-btn" @click="$emit('panic')">Panic (All Notes Off)</button>
+            <button class="btn btn-danger btn-block" @click="$emit('panic')">Panic (All Notes Off)</button>
           </section>
         </template>
       </div>
@@ -263,7 +263,7 @@
           <div class="calibration-phase">{{ calibrationPhaseLabel }}</div>
           <div class="calibration-count">{{ calibrationSamples.length }} / 10</div>
           <div class="calibration-hint">Tap anywhere</div>
-          <button class="reset-btn" @pointerdown.stop @click="cancelCalibration">Cancel</button>
+          <button class="btn" @pointerdown.stop @click="cancelCalibration">Cancel</button>
         </div>
       </div>
     </teleport>
@@ -428,31 +428,15 @@ export default {
 </script>
 
 <style lang="sass">
-.settings-overlay
-  position: fixed
-  inset: 0
-  background: rgba(0, 0, 0, 0.55)
-  z-index: 100
-  display: flex
-  align-items: center
-  justify-content: center
-  padding: 24px
-
 .settings-modal
   width: min(480px, 100%)
   max-height: min(720px, 100%)
-  background: #222
-  border: 1px solid #444
-  border-radius: 12px
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5)
-  display: flex
-  flex-direction: column
+  box-shadow: var(--shadow-elevation)
   overflow: hidden
 
 @media (max-width: 600px)
-  .settings-overlay
+  .modal-overlay
     padding: 0
-
   .settings-modal
     width: 100%
     height: 100%
@@ -464,226 +448,149 @@ export default {
   display: flex
   justify-content: space-between
   align-items: center
-  padding: 14px 16px
-  border-bottom: 1px solid #333
-  flex-shrink: 0
+  padding: 14px var(--space-4)
+  border-bottom: var(--border-hairline) solid var(--color-border)
 
   h2
-    font-size: 16px
-    color: var(--accent)
-    margin: 0
+    font-size: var(--text-lg)
+    color: var(--color-accent)
+  svg
+    width: 20px
+    height: 20px
 
 .settings-tabs
   display: flex
-  border-bottom: 1px solid #333
-  flex-shrink: 0
-  background: #1d1d1d
+  border-bottom: var(--border-hairline) solid var(--color-border)
+  background: var(--color-bg-tab)
 
   button
     flex: 1
     background: none
     border: none
-    color: #888
-    font-size: 14px
-    padding: 12px 8px
+    color: var(--color-text-muted)
+    font-size: var(--text-md)
+    padding: var(--space-3) var(--space-2)
     cursor: pointer
-    border-bottom: 2px solid transparent
-    transition: color 0.12s ease, border-color 0.12s ease
+    border-bottom: var(--border-thick) solid transparent
+    transition: color var(--transition-fast), border-color var(--transition-fast)
     min-height: 44px
 
     &:hover
-      color: #ccc
-
+      color: var(--color-text)
     &.active
-      color: var(--accent)
-      border-bottom-color: var(--accent)
+      color: var(--color-accent)
+      border-bottom-color: var(--color-accent)
 
 .settings-body
   flex: 1
   overflow-y: auto
 
   section
-    padding: 16px
-    border-top: 1px solid #333
-
+    padding: var(--space-4)
+    border-top: var(--border-hairline) solid var(--color-border)
     &:first-child
       border-top: none
 
   h3
-    font-size: 12px
-    color: #888
+    font-size: var(--text-sm)
+    color: var(--color-text-muted)
     text-transform: uppercase
     letter-spacing: 1.5px
-    margin: 0 0 12px
-    font-weight: 600
+    margin: 0 0 var(--space-3)
 
   label
     display: flex
     justify-content: space-between
     align-items: center
-    font-size: 15px
-    color: #aaa
-    margin-bottom: 12px
-
-  select, input[type="number"]
-    background: #333
-    color: #ccc
-    border: 1px solid #444
-    border-radius: 6px
-    padding: 8px 10px
-    font-size: 16px
-    min-height: 40px
+    font-size: var(--text-md)
+    color: var(--color-text-secondary)
+    margin-bottom: var(--space-3)
 
   select
     width: 160px
-    font-size: 14px
-    appearance: none
-    -webkit-appearance: none
-    -moz-appearance: none
-    padding-right: 30px
-    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23888' stroke-width='1.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E")
-    background-repeat: no-repeat
-    background-position: right 10px center
-
   input[type="number"]
     width: 72px
 
-.reset-btn
-  background: #333
-  color: #ccc
-  border: 1px solid #444
-  border-radius: 6px
-  padding: 8px
-  font-size: 13px
-  cursor: pointer
-  min-height: 36px
-  margin-top: 4px
-
-  &:hover
-    background: #444
-
-.panic-btn
-  background: #333
-  color: #f66
-  border: 1px solid #633
-  border-radius: 6px
-  padding: 10px
-  font-size: 14px
-  cursor: pointer
-  min-height: 40px
-  margin-top: 8px
-  width: 100%
-
-  &:hover
-    background: #622
-
-.close-btn
-  background: none
-  border: none
-  color: #888
-  cursor: pointer
-  padding: 8px
-  min-width: 40px
-  min-height: 40px
-  display: flex
-  align-items: center
-  justify-content: center
-
-  svg
-    width: 20px
-    height: 20px
-
-  &:hover
-    color: #fff
+  .btn
+    margin-top: var(--space-1)
 
 .compound-input
   display: flex
+  gap: var(--space-2)
   align-items: center
-  gap: 6px
-
   select
     width: 72px
-
   input[type="number"]
     width: 60px
-
   .unit
-    font-size: 13px
-    color: #666
+    font-size: var(--text-sm)
+    color: var(--color-text-faint)
 
 .slider-group
   display: flex
   align-items: center
-  gap: 10px
+  gap: var(--space-2)
   flex: 1
   max-width: 280px
-  margin-left: 16px
+  margin-left: var(--space-4)
 
   input[type="range"]
     flex: 1
-    min-width: 0
-    accent-color: var(--accent)
+    accent-color: var(--color-accent)
     height: 32px
 
   .slider-value
-    font-size: 13px
-    color: #888
-    text-align: right
-    flex-shrink: 0
+    font-size: var(--text-sm)
+    color: var(--color-text-muted)
 
 .calibration-row
   display: flex
-  align-items: center
-  gap: 8px
-  margin-bottom: 12px
+  gap: var(--space-2)
+  margin-bottom: var(--space-3)
 
 .calibration-status
-  font-size: 11px
-  color: #4c4
+  font-size: var(--text-xs)
+  color: var(--color-success)
 
 .small-btn
-  padding: 4px 8px
-  font-size: 11px
+  padding: var(--space-1) var(--space-2)
+  font-size: var(--text-xs)
   min-height: 28px
 
 .calibration-overlay
   position: fixed
   inset: 0
   background: rgba(0, 0, 0, 0.85)
-  z-index: 200
+  z-index: var(--z-calibration)
   display: flex
   align-items: center
   justify-content: center
   touch-action: none
 
 .calibration-prompt
-  text-align: center
   display: flex
   flex-direction: column
   align-items: center
-  gap: 16px
+  gap: var(--space-4)
+  text-align: center
+  color: var(--color-text-strong)
 
-.calibration-phase
-  font-size: 28px
-  font-weight: 700
-  color: var(--accent)
-  text-transform: uppercase
-  letter-spacing: 2px
-
-.calibration-count
-  font-size: 48px
-  font-weight: 300
-  color: #fff
-
-.calibration-hint
-  font-size: 14px
-  color: #888
+  .calibration-phase
+    font-size: var(--text-2xl)
+    color: var(--color-accent)
+    text-transform: uppercase
+    letter-spacing: 2px
+  .calibration-count
+    font-size: 48px
+    font-weight: 300
+  .calibration-hint
+    font-size: var(--text-md)
+    color: var(--color-text-muted)
 
 .settings-build
   text-align: center
-  font-size: 11px
-  color: #444
-  padding: 8px 0
-  border-top: 1px solid #2a2a2a
-  flex-shrink: 0
+  font-size: var(--text-xs)
+  color: var(--color-border-strong)
+  padding: var(--space-2) 0
+  border-top: var(--border-hairline) solid var(--color-surface-2)
 </style>

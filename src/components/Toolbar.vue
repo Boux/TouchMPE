@@ -90,7 +90,7 @@
           </select>
         </label>
 
-        <button class="menu-btn panic" @click="$emit('panic'); menuOpen = false">
+        <button class="btn btn-danger btn-block" @click="$emit('panic'); menuOpen = false">
           Panic (All Notes Off)
         </button>
       </div>
@@ -146,24 +146,19 @@ export default {
 .toolbar
   display: flex
   align-items: center
+  gap: var(--space-2)
   height: 36px
-  padding: 0 8px
-  background: #222
-  border-bottom: 1px solid #333
+  padding: 0 var(--space-2)
+  background: var(--color-surface)
+  border-bottom: var(--border-hairline) solid var(--color-border)
   flex-shrink: 0
-  gap: 6px
   position: relative
 
 .toolbar-logo
   width: 20px
   height: 20px
-  border-radius: 4px
+  border-radius: var(--radius-sm)
   cursor: pointer
-
-.toolbar-title
-  font-size: 13px
-  font-weight: 600
-  color: var(--accent)
 
 .tuning-btn
   font-variant-numeric: tabular-nums
@@ -173,38 +168,38 @@ export default {
   flex: 1
 
 .midi-status
-  width: 8px
-  height: 8px
-  border-radius: 50%
-  background: #555
+  width: var(--space-2)
+  height: var(--space-2)
+  border-radius: var(--radius-circle)
+  background: var(--color-text-dim)
   flex-shrink: 0
 
   &.connected
-    background: #4c4
-    box-shadow: 0 0 4px #4c4
+    background: var(--color-success)
+    box-shadow: 0 0 4px var(--color-success)
 
 .toolbar-btn
-  background: #333
-  color: #ccc
-  border: 1px solid #444
-  border-radius: 3px
-  padding: 4px 10px
-  font-size: 12px
+  background: var(--color-surface-3)
+  color: var(--color-text)
+  border: var(--border-hairline) solid var(--color-border-strong)
+  border-radius: var(--radius-sm)
+  padding: var(--space-1) var(--space-3)
+  font-size: var(--text-sm)
   cursor: pointer
   white-space: nowrap
   flex-shrink: 0
 
   &:hover
-    background: #444
+    background: var(--color-border-strong)
 
   &.active
-    background: var(--accent)
-    color: #000
-    border-color: var(--accent)
+    background: var(--color-accent)
+    color: var(--color-accent-text)
+    border-color: var(--color-accent)
 
   &.small
-    padding: 3px 6px
-    font-size: 11px
+    padding: var(--space-1) var(--space-2)
+    font-size: var(--text-xs)
     min-width: 24px
 
 .toolbar-menu
@@ -212,16 +207,16 @@ export default {
   inset: 0
   top: 36px
   background: rgba(0, 0, 0, 0.4)
-  z-index: 90
+  z-index: var(--z-overlay)
 
 .toolbar-menu-panel
-  background: #2a2a2a
-  border: 1px solid #444
+  background: var(--color-surface-2)
+  border: var(--border-hairline) solid var(--color-border-strong)
   border-top: none
-  padding: 16px
+  padding: var(--space-4)
   display: flex
   flex-direction: column
-  gap: 14px
+  gap: var(--space-3)
   max-width: 320px
   margin-left: auto
 
@@ -229,37 +224,9 @@ export default {
   display: flex
   justify-content: space-between
   align-items: center
-  font-size: 15px
-  color: #aaa
+  font-size: var(--text-md)
+  color: var(--color-text-secondary)
 
   select
-    background: #333
-    color: #ccc
-    border: 1px solid #444
-    border-radius: 6px
-    padding: 8px 10px
-    font-size: 16px
-    min-height: 40px
     max-width: 180px
-
-.menu-btn
-  background: #333
-  color: #ccc
-  border: 1px solid #444
-  border-radius: 6px
-  padding: 10px 14px
-  font-size: 16px
-  cursor: pointer
-  text-align: left
-  min-height: 40px
-
-  &:hover
-    background: #444
-
-  &.panic
-    color: #f66
-    border-color: #633
-
-    &:hover
-      background: #622
 </style>
