@@ -1,49 +1,31 @@
+import ControlPanelConfig from '../models/ControlPanelConfig.js'
+
 const STORAGE_KEY = 'touchmpe-controls'
-
-const DEFAULTS = {
-  dockSide: 'right',
-  panelSize: 30,
-  visible: false,
-  cellSize: 60,
-  controls: []
-}
-
-let nextId = 1
 
 export function loadControlConfig() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      // Remove stale keys from old config versions
       delete parsed.panelX
       delete parsed.panelY
       delete parsed.panelW
       delete parsed.panelH
       delete parsed.gridCols
-      const config = { ...DEFAULTS, ...parsed }
-      if (config.panelSize > 80) config.panelSize = 30
-      // Restore nextId from existing controls
-      for (const ctrl of config.controls) {
-        const num = parseInt(ctrl.id?.replace('ctrl-', ''), 10)
-        if (num >= nextId) nextId = num + 1
-      }
-      return config
+      if (parsed.panelSize > 80) parsed.panelSize = 30
+      return new ControlPanelConfig(parsed)
     }
   } catch (e) {
     // ignore
   }
-  return { ...DEFAULTS, controls: [] }
+  return new ControlPanelConfig()
 }
 
 export function saveControlConfig(config) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+    const data = config instanceof ControlPanelConfig ? config.toJSON() : config
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   } catch (e) {
     // ignore
   }
-}
-
-export function generateId() {
-  return 'ctrl-' + (nextId++)
 }

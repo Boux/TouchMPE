@@ -22,87 +22,38 @@
 
     <div class="toolbar-spacer"></div>
 
-    <span
-      class="midi-status"
-      :class="{ connected: midiOutputName }"
-    ></span>
+    <span class="midi-status" :class="{ connected: midiOutputName }"></span>
 
     <button class="toolbar-btn" @click="menuOpen = !menuOpen">
       {{ settings.mpeMode ? 'MPE' : 'MIDI' }}
     </button>
 
-    <button class="toolbar-btn" :class="{ active: controlsOpen }" @click="$emit('toggle-controls')">
-      CC
-    </button>
+    <button class="toolbar-btn" :class="{ active: controlsOpen }" @click="$emit('toggle-controls')">CC</button>
+    <button class="toolbar-btn" :class="{ active: settingsOpen }" @click="$emit('toggle-settings')">Settings</button>
 
-    <button
-      class="toolbar-btn"
-      :class="{ active: settingsOpen }"
-      @click="$emit('toggle-settings')"
-    >
-      Settings
-    </button>
-
-    <div v-if="menuOpen" class="toolbar-menu" @click.self="menuOpen = false">
-      <div class="toolbar-menu-panel">
-        <label class="menu-label">
-          MIDI Output
-          <select
-            :value="selectedOutputId"
-            @change="$emit('select-output', $event.target.value); menuOpen = false"
-          >
-            <option value="" disabled>Select...</option>
-            <option
-              v-for="output in midiOutputs"
-              :key="output.id"
-              :value="output.id"
-            >
-              {{ output.name }}
-            </option>
-          </select>
-        </label>
-
-        <label class="menu-label">
-          MIDI Input
-          <select
-            :value="selectedInputId"
-            @change="$emit('select-input', $event.target.value); menuOpen = false"
-          >
-            <option value="">None</option>
-            <option
-              v-for="input in midiInputs"
-              :key="input.id"
-              :value="input.id"
-            >
-              {{ input.name }}
-            </option>
-          </select>
-        </label>
-
-        <label class="menu-label">
-          Mode
-          <select
-            :value="settings.mpeMode ? 'mpe' : 'midi'"
-            @change="$emit('toggle-mpe', $event.target.value === 'mpe')"
-          >
-            <option value="mpe">MPE</option>
-            <option value="midi">MIDI</option>
-          </select>
-        </label>
-
-        <button class="btn btn-danger btn-block" @click="$emit('panic'); menuOpen = false">
-          Panic (All Notes Off)
-        </button>
-      </div>
-    </div>
+    <ToolbarMenu
+      v-if="menuOpen"
+      :settings="settings"
+      :midi-outputs="midiOutputs"
+      :midi-inputs="midiInputs"
+      :midi-output-name="midiOutputName"
+      :midi-input-name="midiInputName"
+      @select-output="$emit('select-output', $event)"
+      @select-input="$emit('select-input', $event)"
+      @toggle-mpe="$emit('toggle-mpe', $event)"
+      @panic="$emit('panic')"
+      @close="menuOpen = false"
+    />
   </div>
 </template>
 
 <script>
+import ToolbarMenu from './toolbar/ToolbarMenu.vue'
 import { noteNameWithOctave } from '../layout/NoteUtils.js'
 
 export default {
   name: 'Toolbar',
+  components: { ToolbarMenu },
 
   props: {
     settings: { type: Object, required: true },
@@ -118,23 +69,10 @@ export default {
   emits: ['select-output', 'select-input', 'toggle-settings', 'toggle-controls', 'toggle-mpe', 'toggle-tuning', 'panic', 'accent-change'],
 
   data() {
-    return {
-      menuOpen: false
-    }
+    return { menuOpen: false }
   },
 
   computed: {
-    selectedOutputId() {
-      const match = this.midiOutputs.find(o => o.name === this.midiOutputName)
-      return match ? match.id : ''
-    },
-
-    selectedInputId() {
-      return this.midiInputName
-        ? (this.midiInputs.find(i => i.name === this.midiInputName)?.id || '')
-        : ''
-    },
-
     rootLabel() {
       return noteNameWithOctave(this.settings.rootNote)
     }
@@ -201,32 +139,4 @@ export default {
     padding: var(--space-1) var(--space-2)
     font-size: var(--text-xs)
     min-width: 24px
-
-.toolbar-menu
-  position: fixed
-  inset: 0
-  top: 36px
-  background: rgba(0, 0, 0, 0.4)
-  z-index: var(--z-overlay)
-
-.toolbar-menu-panel
-  background: var(--color-surface-2)
-  border: var(--border-hairline) solid var(--color-border-strong)
-  border-top: none
-  padding: var(--space-4)
-  display: flex
-  flex-direction: column
-  gap: var(--space-3)
-  max-width: 320px
-  margin-left: auto
-
-.menu-label
-  display: flex
-  justify-content: space-between
-  align-items: center
-  font-size: var(--text-md)
-  color: var(--color-text-secondary)
-
-  select
-    max-width: 180px
 </style>

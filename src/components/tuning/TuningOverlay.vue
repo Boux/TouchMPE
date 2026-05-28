@@ -8,7 +8,7 @@
         :min="0"
         :max="127"
         :model-value="settings.rootNote"
-        @update:model-value="onRoot"
+        @update:model-value="v => emitPatch({ rootNote: v })"
       >
         {{ rootLabel }}
       </DragNumber>
@@ -16,32 +16,28 @@
       <div class="tuning-globals">
         <div class="tuning-global">
           <span class="label">Row</span>
-          <DragNumber class="value" :min="1" :max="12" :model-value="settings.rowOffset" @update:model-value="onRowOffset">
+          <DragNumber class="value" :min="1" :max="12" :model-value="settings.rowOffset" @update:model-value="v => emitPatch({ rowOffset: v })">
             {{ settings.rowOffset }}
           </DragNumber>
         </div>
         <div class="tuning-global">
           <span class="label">Col</span>
-          <DragNumber class="value" :min="1" :max="12" :model-value="settings.colOffset" @update:model-value="onColOffset">
+          <DragNumber class="value" :min="1" :max="12" :model-value="settings.colOffset" @update:model-value="v => emitPatch({ colOffset: v })">
             {{ settings.colOffset }}
           </DragNumber>
         </div>
       </div>
 
       <div class="tuning-rows">
-        <div v-for="i in nonRootIndices" :key="i" class="tuning-row">
-          <span class="note">{{ noteFor(i) }}</span>
-          <button v-if="hasOverride(i - 1)" class="reset" @click="clearOverride(i - 1)" aria-label="Reset row">↺</button>
-          <DragNumber
-            :class="['delta', { overridden: hasOverride(i - 1) }]"
-            :min="-12"
-            :max="24"
-            :model-value="effectiveOffset(i - 1)"
-            @update:model-value="(v) => setOverride(i - 1, v)"
-          >
-            {{ formatOffset(effectiveOffset(i - 1)) }}
-          </DragNumber>
-        </div>
+        <TuningRow
+          v-for="i in nonRootIndices"
+          :key="i"
+          :note-label="noteFor(i)"
+          :offset="effectiveOffset(i - 1)"
+          :overridden="hasOverride(i - 1)"
+          @update="v => setOverride(i - 1, v)"
+          @clear="clearOverride(i - 1)"
+        />
         <div class="tuning-row root">
           <span class="note">{{ rootLabel }}</span>
           <span class="root-label">root</span>
@@ -62,13 +58,13 @@
 
 <script>
 import DragNumber from './DragNumber.vue'
+import TuningRow from './TuningRow.vue'
 import { PRESETS } from '../../layout/KeyboardLayout.js'
 import { noteNameWithOctave } from '../../layout/NoteUtils.js'
 
 export default {
   name: 'TuningOverlay',
-
-  components: { DragNumber },
+  components: { DragNumber, TuningRow },
 
   props: {
     settings: { type: Object, required: true },
@@ -106,13 +102,8 @@ export default {
       this.$emit('update', { ...this.settings, ...patch, preset: 'custom' })
     },
 
-    onRoot(v) { this.emitPatch({ rootNote: v }) },
-    onRowOffset(v) { this.emitPatch({ rowOffset: v }) },
-    onColOffset(v) { this.emitPatch({ colOffset: v }) },
-
     hasOverride(gapIdx) {
-      const o = this.settings.rowOverrides
-      return o != null && o[gapIdx] != null
+      return this.settings.rowOverrides?.[gapIdx] != null
     },
 
     effectiveOffset(gapIdx) {
@@ -120,8 +111,7 @@ export default {
     },
 
     setOverride(gapIdx, value) {
-      const next = { ...(this.settings.rowOverrides || {}), [gapIdx]: value }
-      this.emitPatch({ rowOverrides: next })
+      this.emitPatch({ rowOverrides: { ...(this.settings.rowOverrides || {}), [gapIdx]: value } })
     },
 
     clearOverride(gapIdx) {
@@ -132,10 +122,6 @@ export default {
 
     noteFor(i) {
       return noteNameWithOctave(this.settings.rootNote + this.cumulative[i])
-    },
-
-    formatOffset(v) {
-      return v >= 0 ? `+${v}` : `${v}`
     },
 
     onPreset(key) {
@@ -200,49 +186,20 @@ export default {
   flex-direction: column
   gap: var(--space-1)
 
-.tuning-row
-  display: flex
-  align-items: center
-  background: var(--color-surface-2)
-  border-radius: var(--radius-md)
-  padding: var(--space-2) var(--space-3)
-  min-height: 40px
-  gap: var(--space-2)
-
-  .note
-    flex: 1
-    font-size: var(--text-md)
-    font-variant-numeric: tabular-nums
-
-  .delta
-    font-size: var(--text-lg)
-    color: var(--color-text-muted)
-    font-variant-numeric: tabular-nums
-    min-width: 36px
-    padding: var(--space-1) var(--space-2)
-    border-radius: var(--radius-sm)
-
-    &.overridden
-      color: var(--color-accent)
-      background: rgba(0, 0, 0, 0.3)
-
-  .reset
-    background: none
-    border: none
-    color: var(--color-text-muted)
-    font-size: var(--text-lg)
-    cursor: pointer
-    padding: var(--space-1) var(--space-2)
-    line-height: 1
-
-    &:hover
-      color: var(--color-text)
-
-  &.root
+  .tuning-row.root
     background: var(--color-bg)
+    border-radius: var(--radius-md)
+    padding: var(--space-2) var(--space-3)
+    min-height: 40px
+    display: flex
+    align-items: center
+    gap: var(--space-2)
 
     .note
+      flex: 1
       color: var(--color-accent)
+      font-size: var(--text-md)
+      font-variant-numeric: tabular-nums
     .root-label
       font-size: var(--text-xs)
       color: var(--color-text-faint)
