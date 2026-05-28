@@ -9,6 +9,7 @@ const DEFAULTS = {
   rootNote: 36,
   rowOffset: 5,
   colOffset: 1,
+  rowOverrides: {},
   scale: 'chromatic',
   scaleRoot: 0,
 

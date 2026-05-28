@@ -16,11 +16,9 @@
       @input="$emit('accent-change', $event.target.value)"
       style="display:none" />
 
-    <div class="toolbar-inline">
-      <button class="toolbar-btn small" @click="$emit('octave-down')">-</button>
-      <span class="toolbar-octave">{{ octaveLabel }}</span>
-      <button class="toolbar-btn small" @click="$emit('octave-up')">+</button>
-    </div>
+    <button class="toolbar-btn small tuning-btn" :class="{ active: tuningOpen }" @click="$emit('toggle-tuning')">
+      {{ rootLabel }}
+    </button>
 
     <div class="toolbar-spacer"></div>
 
@@ -101,6 +99,8 @@
 </template>
 
 <script>
+import { noteNameWithOctave } from '../layout/NoteUtils.js'
+
 export default {
   name: 'Toolbar',
 
@@ -111,10 +111,11 @@ export default {
     midiOutputs: { type: Array, default: () => [] },
     midiInputs: { type: Array, default: () => [] },
     settingsOpen: { type: Boolean, default: false },
-    controlsOpen: { type: Boolean, default: false }
+    controlsOpen: { type: Boolean, default: false },
+    tuningOpen: { type: Boolean, default: false }
   },
 
-  emits: ['select-output', 'select-input', 'toggle-settings', 'toggle-controls', 'toggle-mpe', 'octave-up', 'octave-down', 'panic', 'accent-change'],
+  emits: ['select-output', 'select-input', 'toggle-settings', 'toggle-controls', 'toggle-mpe', 'toggle-tuning', 'panic', 'accent-change'],
 
   data() {
     return {
@@ -134,10 +135,8 @@ export default {
         : ''
     },
 
-    octaveLabel() {
-      const note = this.settings.rootNote
-      const octave = Math.floor(note / 12) - 1
-      return 'C' + octave
+    rootLabel() {
+      return noteNameWithOctave(this.settings.rootNote)
     }
   }
 }
@@ -166,16 +165,9 @@ export default {
   font-weight: 600
   color: var(--accent)
 
-.toolbar-inline
-  display: flex
-  align-items: center
-  gap: 3px
-
-.toolbar-octave
-  font-size: 12px
-  color: #ccc
-  min-width: 24px
-  text-align: center
+.tuning-btn
+  font-variant-numeric: tabular-nums
+  min-width: 32px
 
 .toolbar-spacer
   flex: 1

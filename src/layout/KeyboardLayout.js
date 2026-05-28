@@ -2,7 +2,7 @@ import { SCALES } from './NoteUtils.js'
 
 export const PRESETS = {
   chromatic: { rowOffset: 5, colOffset: 1, label: 'Chromatic' },
-  guitar:    { rowOffset: 5, colOffset: 1, label: 'Guitar' },
+  guitar:    { rowOffset: 5, colOffset: 1, rowOverrides: { 3: 4 }, label: 'Guitar' },
   thirds:    { rowOffset: 4, colOffset: 1, label: 'Thirds' },
   fifths:    { rowOffset: 7, colOffset: 1, label: 'Fifths' },
   wickiHayden: { rowOffset: 7, colOffset: 2, label: 'Wicki-Hayden' }
@@ -15,7 +15,9 @@ export const PRESETS = {
  * @param {number} config.cols - Number of columns (default 12)
  * @param {number} config.rows - Number of rows (default 5)
  * @param {number} config.rootNote - MIDI note of bottom-left pad (default 36 = C2)
- * @param {number} config.rowOffset - Semitones between rows (default 5)
+ * @param {number} config.rowOffset - Default semitones between rows (default 5)
+ * @param {Object<number, number>} config.rowOverrides - Sparse map of per-gap overrides.
+ *   Key k is the gap between row-from-bottom k and k+1.
  * @param {number} config.colOffset - Semitones between columns (default 1)
  * @param {string} config.scale - Scale name from SCALES, or 'chromatic' (default)
  * @param {number} config.scaleRoot - Root pitch class 0–11 for scale filtering (default 0 = C)
@@ -29,6 +31,7 @@ export function computeGrid(config = {}) {
     rows = 5,
     rootNote = 36,
     rowOffset = 5,
+    rowOverrides = {},
     colOffset = 1,
     scale = 'chromatic',
     scaleRoot = 0
@@ -37,14 +40,19 @@ export function computeGrid(config = {}) {
   const scaleIntervals = SCALES[scale] || SCALES.chromatic
   const scaleSet = new Set(scaleIntervals.map(i => (i + scaleRoot) % 12))
 
-  const effectiveRowOffset = Math.min(rowOffset, cols * colOffset)
+  const cumulative = new Array(rows)
+  cumulative[0] = 0
+  for (let k = 1; k < rows; k++) {
+    const d = rowOverrides[k - 1] ?? rowOffset
+    cumulative[k] = cumulative[k - 1] + d
+  }
 
   const grid = []
   for (let row = 0; row < rows; row++) {
     grid[row] = []
     const rowFromBottom = rows - 1 - row
     for (let col = 0; col < cols; col++) {
-      const note = rootNote + rowFromBottom * effectiveRowOffset + col * colOffset
+      const note = rootNote + cumulative[rowFromBottom] + col * colOffset
       if (note < 0 || note > 127) {
         grid[row][col] = null
         continue

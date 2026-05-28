@@ -43,18 +43,6 @@
             </label>
 
             <label>
-              Row Offset (semitones)
-              <input type="number" :value="settings.rowOffset" min="1" max="12"
-                @change="update('rowOffset', +$event.target.value)" />
-            </label>
-
-            <label>
-              Col Offset (semitones)
-              <input type="number" :value="settings.colOffset" min="1" max="12"
-                @change="update('colOffset', +$event.target.value)" />
-            </label>
-
-            <label>
               Scale
               <select :value="settings.scale"
                 @change="update('scale', $event.target.value)">
@@ -430,6 +418,7 @@ export default {
         rootNote: 36,
         rowOffset: 5,
         colOffset: 1,
+        rowOverrides: {},
         scale: 'chromatic',
         scaleRoot: 0
       })

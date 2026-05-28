@@ -8,11 +8,10 @@
       :settings-open="settingsOpen"
       :midi-inputs="midiInputs"
       :controls-open="controlConfig.visible"
+      :tuning-open="tuningOpen"
       @select-output="onSelectOutput"
       @toggle-settings="settingsOpen = !settingsOpen"
-      @octave-up="shiftOctave(1)"
-      @octave-down="shiftOctave(-1)"
-      @preset-change="onPresetChange"
+      @toggle-tuning="tuningOpen = !tuningOpen"
       @panic="onPanic"
       @toggle-mpe="onToggleMpe"
       @select-input="onSelectInput"
@@ -48,6 +47,13 @@
       @panic="onPanic"
       @close="settingsOpen = false"
     />
+    <TuningOverlay
+      v-if="tuningOpen"
+      :settings="settings"
+      :rows="gridRows"
+      @update="onSettingsUpdate"
+      @close="tuningOpen = false"
+    />
   </div>
 </template>
 
@@ -56,18 +62,19 @@ import GridCanvas from './components/GridCanvas.vue'
 import Toolbar from './components/Toolbar.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import ControlPanel from './components/ControlPanel.vue'
+import TuningOverlay from './components/tuning/TuningOverlay.vue'
 import MIDIOutput from './midi/MIDIOutput.js'
-import { PRESETS } from './layout/KeyboardLayout.js'
-import { loadSettings, saveSettings } from './store/settings.js'
+import { loadSettings, saveSettings, calcGrid } from './store/settings.js'
 import { loadControlConfig, saveControlConfig } from './store/controlConfig.js'
 
 export default {
   name: 'App',
-  components: { GridCanvas, Toolbar, SettingsPanel, ControlPanel },
+  components: { GridCanvas, Toolbar, SettingsPanel, ControlPanel, TuningOverlay },
 
   data() {
     return {
       settingsOpen: false,
+      tuningOpen: false,
       settings: loadSettings(),
       controlConfig: loadControlConfig(),
       midiOutput: new MIDIOutput(),
@@ -76,6 +83,12 @@ export default {
       midiOutputName: null,
       midiInputName: null,
       engine: null
+    }
+  },
+
+  computed: {
+    gridRows() {
+      return calcGrid(this.settings.padScale || 1.0).rows
     }
   },
 
@@ -128,25 +141,6 @@ export default {
       saveSettings(this.settings)
       if (this.$refs.gridCanvas) {
         this.$refs.gridCanvas.applySettings(this.settings)
-      }
-    },
-
-    onPresetChange(presetName) {
-      const preset = PRESETS[presetName]
-      if (preset) {
-        this.onSettingsUpdate({
-          ...this.settings,
-          preset: presetName,
-          rowOffset: preset.rowOffset,
-          colOffset: preset.colOffset
-        })
-      }
-    },
-
-    shiftOctave(direction) {
-      const newRoot = this.settings.rootNote + direction * 12
-      if (newRoot >= 0 && newRoot <= 127) {
-        this.onSettingsUpdate({ ...this.settings, rootNote: newRoot })
       }
     },
 

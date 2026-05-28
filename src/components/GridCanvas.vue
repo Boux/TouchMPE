@@ -54,6 +54,7 @@ export default {
         rows,
         rootNote: settings.rootNote,
         rowOffset: settings.rowOffset,
+        rowOverrides: settings.rowOverrides || {},
         colOffset: settings.colOffset,
         scale: settings.scale,
         scaleRoot: settings.scaleRoot
