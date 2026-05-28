@@ -3,16 +3,14 @@
     class="drag-number"
     :class="{ dragging }"
     :data-axis="axis"
-    @pointerdown="onDown"
-    @pointermove="onMove"
-    @pointerup="onUp"
-    @pointercancel="onUp"
   >
     <slot>{{ display }}</slot>
   </div>
 </template>
 
 <script>
+import Hammer from 'hammerjs'
+
 export default {
   name: 'DragNumber',
 
@@ -28,38 +26,35 @@ export default {
   emits: ['update:modelValue'],
 
   data() {
-    return {
-      dragging: false,
-      startPos: 0,
-      startValue: 0
-    }
+    return { dragging: false }
   },
 
-  methods: {
-    onDown(e) {
-      e.preventDefault()
-      this.$el.setPointerCapture(e.pointerId)
-      this.dragging = true
-      this.startPos = this.axis === 'x' ? e.clientX : e.clientY
-      this.startValue = this.modelValue
-    },
+  mounted() {
+    this.startValue = this.modelValue
+    this.hammer = new Hammer.Manager(this.$el, { touchAction: 'none' })
+    this.hammer.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 1 }))
 
-    onMove(e) {
-      if (!this.dragging) return
-      const pos = this.axis === 'x' ? e.clientX : e.clientY
-      const raw = this.axis === 'x' ? pos - this.startPos : this.startPos - pos
-      const steps = Math.trunc(raw / this.sensitivity)
+    this.hammer.on('panstart', () => {
+      this.startValue = this.modelValue
+      this.dragging = true
+    })
+
+    this.hammer.on('panmove', (e) => {
+      const delta = this.axis === 'x' ? e.deltaX : -e.deltaY
+      const steps = Math.trunc(delta / this.sensitivity)
       const next = Math.max(this.min, Math.min(this.max, this.startValue + steps))
       if (next !== this.modelValue) {
         this.$emit('update:modelValue', next)
       }
-    },
+    })
 
-    onUp(e) {
-      if (!this.dragging) return
+    this.hammer.on('panend pancancel', () => {
       this.dragging = false
-      try { this.$el.releasePointerCapture(e.pointerId) } catch (err) {}
-    }
+    })
+  },
+
+  beforeUnmount() {
+    this.hammer?.destroy()
   }
 }
 </script>

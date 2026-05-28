@@ -1,7 +1,6 @@
 <template>
-  <div class="tuning-row">
+  <div ref="root" class="tuning-row">
     <span class="note">{{ noteLabel }}</span>
-    <button v-if="overridden" class="reset" @click="$emit('clear')" aria-label="Reset row">↺</button>
     <DragNumber
       :class="['delta', { overridden }]"
       :min="-12"
@@ -15,6 +14,7 @@
 </template>
 
 <script>
+import Hammer from 'hammerjs'
 import DragNumber from './DragNumber.vue'
 
 export default {
@@ -33,6 +33,18 @@ export default {
     formattedOffset() {
       return this.offset >= 0 ? `+${this.offset}` : `${this.offset}`
     }
+  },
+
+  mounted() {
+    this.hammer = new Hammer.Manager(this.$refs.root)
+    this.hammer.add(new Hammer.Tap({ event: 'doubletap', taps: 2 }))
+    this.hammer.on('doubletap', () => {
+      if (this.overridden) this.$emit('clear')
+    })
+  },
+
+  beforeUnmount() {
+    this.hammer?.destroy()
   }
 }
 </script>
@@ -45,12 +57,17 @@ export default {
   border-radius: var(--radius-md)
   padding: var(--space-2) var(--space-3)
   min-height: 40px
+  min-width: 0
   gap: var(--space-2)
 
   .note
     flex: 1
+    min-width: 0
     font-size: var(--text-md)
     font-variant-numeric: tabular-nums
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
 
   .delta
     font-size: var(--text-lg)
@@ -63,16 +80,4 @@ export default {
     &.overridden
       color: var(--color-accent)
       background: rgba(0, 0, 0, 0.3)
-
-  .reset
-    background: none
-    border: none
-    color: var(--color-text-muted)
-    font-size: var(--text-lg)
-    cursor: pointer
-    padding: var(--space-1) var(--space-2)
-    line-height: 1
-
-    &:hover
-      color: var(--color-text)
 </style>

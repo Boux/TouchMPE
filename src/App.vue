@@ -50,7 +50,7 @@
     <TuningOverlay
       v-if="tuningOpen"
       :settings="settings"
-      :rows="gridRows"
+      :canvas-el="gridCanvasEl"
       @update="onSettingsUpdate"
       @close="tuningOpen = false"
     />
@@ -64,7 +64,7 @@ import SettingsPanel from './components/SettingsPanel.vue'
 import ControlPanel from './components/ControlPanel.vue'
 import TuningOverlay from './components/tuning/TuningOverlay.vue'
 import MIDIOutput from './midi/MIDIOutput.js'
-import { loadSettings, saveSettings, calcGrid } from './store/settings.js'
+import { loadSettings, saveSettings } from './store/settings.js'
 import { loadControlConfig, saveControlConfig } from './store/controlConfig.js'
 
 export default {
@@ -82,13 +82,8 @@ export default {
       midiInputs: [],
       midiOutputName: null,
       midiInputName: null,
-      engine: null
-    }
-  },
-
-  computed: {
-    gridRows() {
-      return calcGrid(this.settings.padScale || 1.0).rows
+      engine: null,
+      gridCanvasEl: null
     }
   },
 
@@ -117,6 +112,7 @@ export default {
     })
 
     this._applyAccentColor(this.settings.accentColor)
+    this.gridCanvasEl = this.$refs.gridCanvas?.$refs?.canvas || null
   },
 
   methods: {
